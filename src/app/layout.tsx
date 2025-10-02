@@ -1,10 +1,11 @@
-import "../styles/globals.css";
-import Navbar from "../components/Navbar";
-import Footer from "../components/Footer";
+import "@/styles/globals.css";
+import Navbar from "@/components/Navbar";
+import Footer from "@/components/Footer";
+import { CartProvider } from "@/context/CartContext";
 
 export const metadata = {
-  title: "Ecommerce Demo",
-  description: "Tienda en línea demo con Next.js + Tailwind",
+  title: "IV Design",
+  description: "E-commerce demo con Next.js y Tailwind",
 };
 
 export default function RootLayout({
@@ -14,11 +15,12 @@ export default function RootLayout({
 }) {
   return (
     <html lang="es">
-      <body className="min-h-screen flex flex-col font-sans bg-gray-50 text-gray-900">
-        suppressHydrationWarning={true}
-        <Navbar />
-        <main className="flex-1 container mx-auto p-6">{children}</main>
-        <Footer />
+      <body className="flex flex-col min-h-screen">
+        <CartProvider>
+          <Navbar />
+          <main className="flex-1 container mx-auto px-4 py-6">{children}</main>
+          <Footer />
+        </CartProvider>
       </body>
     </html>
   );

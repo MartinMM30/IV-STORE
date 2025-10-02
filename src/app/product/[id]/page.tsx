@@ -1,25 +1,57 @@
+"use client";
+
 import { notFound } from "next/navigation";
+import { useCart } from "@/context/CartContext";
 
 const products = [
-  { id: "1", name: "Bolso elegante", price: 120, description: "Bolso hecho a mano.", image: "https://via.placeholder.com/400" },
-  { id: "2", name: "Zapatos modernos", price: 90, description: "Zapatos cómodos y con estilo.", image: "https://via.placeholder.com/400" },
-  { id: "3", name: "Reloj minimalista", price: 200, description: "Reloj con diseño moderno.", image: "https://via.placeholder.com/400" },
+  {
+    id: 1,
+    name: "Bolso elegante",
+    price: 120,
+    description: "Un bolso de diseño exclusivo.",
+    image: "https://via.placeholder.com/500",
+  },
+  {
+    id: 2,
+    name: "Zapatos de cuero",
+    price: 90,
+    description: "Cómodos y elegantes.",
+    image: "https://via.placeholder.com/500",
+  },
+  {
+    id: 3,
+    name: "Reloj minimalista",
+    price: 200,
+    description: "Perfecto para cualquier ocasión.",
+    image: "https://via.placeholder.com/500",
+  },
 ];
 
 export default function ProductPage({ params }: { params: { id: string } }) {
-  const product = products.find((p) => p.id === params.id);
+  const { addToCart } = useCart();
 
+  const product = products.find((p) => p.id.toString() === params.id);
   if (!product) return notFound();
 
   return (
-    <section className="max-w-3xl mx-auto">
-      <img src={product.image} alt={product.name} className="rounded-lg mb-6" />
-      <h1 className="text-3xl font-bold">{product.name}</h1>
-      <p className="text-gray-600 my-4">{product.description}</p>
-      <p className="text-xl font-semibold">${product.price}</p>
-      <button className="mt-4 px-6 py-3 bg-black text-white rounded-lg shadow hover:bg-gray-800">
-        Agregar al carrito
-      </button>
-    </section>
+    <div className="grid md:grid-cols-2 gap-8">
+      <img
+        src={product.image}
+        alt={product.name}
+        className="rounded-lg shadow-lg"
+      />
+      <div>
+        <h1 className="text-3xl font-bold mb-2">{product.name}</h1>
+        <p className="text-gray-600 mb-4">{product.description}</p>
+        <p className="text-xl font-semibold mb-6">${product.price}</p>
+
+        <button
+          onClick={() => addToCart(product)}
+          className="px-6 py-3 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition"
+        >
+          Agregar al carrito 🛒
+        </button>
+      </div>
+    </div>
   );
 }

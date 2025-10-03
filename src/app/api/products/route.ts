@@ -1,4 +1,4 @@
-
+// src/app/api/products/route.ts
 
 import { NextResponse } from "next/server";
 import { connectMongo } from "@/lib/mongoClient"; 
@@ -6,21 +6,20 @@ import { connectMongo } from "@/lib/mongoClient";
 export async function GET() {
   try {
     const client = await connectMongo();
-    const db = client.db("iv_database"); // Nombre de tu DB
-    
-    // Consulta la colección 'products' y devuelve todos los documentos
+    const db = client.db("iv_database");
+
+    // LECTURA DE TODOS LOS PRODUCTOS
     const products = await db
       .collection("products") 
-      .find({}) // Consulta que trae todos los documentos
+      .find({})
       .toArray();
 
-    // Devuelve los productos como JSON
     return NextResponse.json(products);
 
   } catch (error) {
-    console.error("❌ Error al obtener productos:", error);
+    console.error("❌ Error al obtener todos los productos:", error);
     return NextResponse.json(
-      { error: "No se pudieron cargar los productos." },
+      { error: "Fallo al cargar la lista de productos." },
       { status: 500 }
     );
   }

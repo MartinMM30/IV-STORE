@@ -2,17 +2,31 @@
 
 import Link from "next/link";
 import { useCart } from "@/context/CartContext";
+import { useAuth } from "@/context/AuthContext";
 
 export default function Navbar() {
   const { cart } = useCart();
+  const { user, logout } = useAuth();
   const totalItems = cart.reduce((sum, item) => sum + item.quantity, 0);
+
+  const handleLogout = async () => {
+    try {
+      await logout();
+      // Opcional: puedes redirigir al home o login si quieres con router.push("/login")
+    } catch (error) {
+      console.error("Error al cerrar sesión:", error);
+    }
+  };
 
   return (
     <nav className="bg-white shadow-sm border-b">
       <div className="container mx-auto flex items-center justify-between px-4 py-4">
+        {/* Logo / Título */}
         <Link href="/" className="text-xl font-bold text-indigo-600">
           IV
         </Link>
+
+        {/* Enlaces principales */}
         <div className="flex gap-6 items-center">
           <Link href="/" className="hover:text-indigo-600">
             Inicio
@@ -28,6 +42,28 @@ export default function Navbar() {
               </span>
             )}
           </Link>
+
+          {/* Autenticación */}
+          {user ? (
+            <>
+              <span className="text-gray-600 text-sm">Hola, {user.email}</span>
+              <button
+                onClick={handleLogout}
+                className="text-sm bg-red-500 text-white px-3 py-1 rounded hover:bg-red-600 transition"
+              >
+                Cerrar sesión
+              </button>
+            </>
+          ) : (
+            <>
+              <Link href="/login" className="hover:text-indigo-600">
+                Iniciar sesión
+              </Link>
+              <Link href="/register" className="hover:text-indigo-600">
+                Registrarse
+              </Link>
+            </>
+          )}
         </div>
       </div>
     </nav>

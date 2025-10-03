@@ -1,74 +1,59 @@
-// src/app/catalog/page.tsx
+"use client";
 
 import ProductCard from "@/components/ProductCard";
+import { useCart } from "@/context/CartContext";
+import { useEffect } from "react";
 
 // Definición del tipo de producto (ajusta esto si tu modelo es diferente)
+// Nota: Esta interface es solo de referencia; la fuente de verdad es el CartContext
 interface Product {
-  _id: string; // ID de MongoDB
-  name: string;
-  price: number;
-  description: string;
-  images: string[]; // Array de URLs de imágenes
-  stock: number;
-  category?: string; // Opcional
+  _id: string; // ID de MongoDB
+  name: string;
+  price: number;
+  description: string;
+  images: string[]; // Array de URLs de imágenes
+  stock: number;
+  category?: string; // Opcional
 }
 
-// Función que se encarga de llamar a la API
-async function fetchProducts(): Promise<Product[]> {
-  // NOTA: Usamos 'http://localhost:3000' para asegurar la ruta completa.
-  // 'cache: "no-store"' asegura que Next.js obtenga los datos frescos de la DB en cada petición.
-  const res = await fetch('http://localhost:3000/api/products', { 
-    cache: 'no-store' 
-  });
+// Ahora es un componente de cliente que usa el hook useCart
+export default function CatalogPage() {
+  // Usamos el hook para obtener los productos ya cargados
+  const { products, refetchProducts } = useCart();
+  
+  // Nota: Eliminamos la función fetchProducts, ya que la lógica de carga está en el Contexto.
   
-  if (!res.ok) {
-    // Esto lanzará un error que podemos capturar en el bloque try/catch
-    throw new Error('Fallo al obtener los productos de la base de datos.');
-  }
+  // Puedes usar useEffect para forzar una recarga inicial si es necesario, 
+  // pero el CartContext ya hace una carga al montarse.
+  // Usamos los productos directamente del estado global (products)
+  
+  const loading = products.length === 0; // Usamos la longitud como un indicador de carga simple
 
-  // Next.js automáticamente tipa la respuesta
-  return res.json();
-}
-
-// El componente de página debe ser 'async' para poder usar 'await'
-export default async function CatalogPage() {
-  let products: Product[] = [];
-  let error: string | null = null;
-
-  try {
-    // 1. Llamada al servidor: obtenemos los productos de la API
-    products = await fetchProducts();
-  } catch (err) {
-    // 2. Manejo de errores si la conexión o la DB fallan
-    error = "No pudimos cargar el catálogo en este momento. Inténtalo más tarde.";
-    console.error("Error al cargar el catálogo:", err);
-  }
-
-  return (
-    <div>
-      <h2 className="text-2xl font-bold mb-6 text-center">Catálogo de Productos</h2>
-      
-      {/* 3. Muestra mensaje de error si existe */}
-      {error && (
-        <div className="text-center p-4 my-4 bg-red-100 text-red-700 rounded-md">
-          {error}
-        </div>
+  return (
+    <div className="p-6">
+      <h2 className="text-3xl font-extrabold mb-8 text-center text-gray-800">Catálogo de Productos</h2>
+      
+      {/* Indicador de Carga */}
+      {loading && (
+          <div className="text-center p-4 my-4 text-gray-500">
+              Cargando catálogo...
+          </div>
       )}
 
-      {/* 4. Muestra mensaje si el catálogo está vacío y no hay error */}
-      {products.length === 0 && !error && (
-        <div className="text-center p-4 my-4 bg-yellow-100 text-yellow-700 rounded-md">
-          El catálogo está vacío. Agrega productos en MongoDB Compass.
-        </div>
-      )}
+      {/* Mensaje si el catálogo está vacío */}
+      {!loading && products.length === 0 && (
+        <div className="text-center p-6 my-8 bg-yellow-50 border-l-4 border-yellow-500 text-yellow-800 rounded-md">
+          El catálogo está vacío. Agrega productos en MongoDB Compass o verifica la conexión.
+        </div>
+      )}
 
-      {/* 5. Renderiza las tarjetas de producto */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-6">
-        {products.map((p) => (
-          // Usamos el _id de MongoDB como key
-          <ProductCard key={p._id} product={p} />
-        ))}
-      </div>
-    </div>
-  );
+      {/* Renderiza las tarjetas de producto */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-8">
+        {products.map((p) => (
+          // Usamos el _id de MongoDB como key
+          <ProductCard key={p._id} product={p} />
+        ))}
+      </div>
+    </div>
+  );
 }

@@ -1,29 +1,35 @@
-// src/middleware.ts
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
 
 export async function middleware(req: NextRequest) {
   const url = req.nextUrl.pathname;
 
-  // Solo proteger rutas administrativas
   if (url.startsWith("/admin")) {
-    const token = req.cookies.get("token")?.value;
-
-    // 🔍 Log para depurar en Vercel (Runtime Logs)
-    console.log("🔍 Cookies en request:", req.cookies.getAll());
+    const token =
+      req.cookies.get("token")?.value ||
+      req.cookies.get("session")?.value ||
+      req.headers.get("Authorization")?.split(" ")[1];
 
     if (!token) {
-      console.warn("🚫 No se encontró token, redirigiendo al login");
+      console.warn("⚠️ Middleware: no se encontró token");
       return NextResponse.redirect(new URL("/login", req.url));
     }
 
-    // ✅ Token presente → dejar continuar
+    console.log("✅ Middleware detectó token:", token.substring(0, 10), "...");
+
+    // 🔐 Si quieres validar el token antes de pasar:
+    // import jwt from "jsonwebtoken";
+    // try {
+    //   jwt.verify(token, process.env.JWT_SECRET!);
+    // } catch {
+    //   console.warn("❌ Token inválido en middleware");
+    //   return NextResponse.redirect(new URL("/login", req.url));
+    // }
   }
 
   return NextResponse.next();
 }
 
-// Configuración: aplica solo a rutas /admin/*
 export const config = {
   matcher: ["/admin/:path*"],
 };

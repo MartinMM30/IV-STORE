@@ -3,83 +3,89 @@ import { NextResponse } from "next/server";
 import { connectMongoose } from "@/lib/mongooseClient";
 import { Product } from "@/models/Product";
 
-// ✅ GET: obtener un producto por ID
+export const runtime = "nodejs";
+
+// ✅ GET - Obtener producto por ID
 export async function GET(
   req: Request,
-  { params }: { params: { productId: string } }
+  context: { params: Promise<{ productId: string }> }
 ) {
-  try {
-    await connectMongoose(); // Usar la conexión de Mongoose
-    const product = await Product.findById(params.productId);
-    if (!product) {
-      return NextResponse.json({ message: "Producto no encontrado" }, { status: 404 });
-    }
+  const { productId } = await context.params; // 👈 Nuevo comportamiento
 
+  try {
+    await connectMongoose();
+    const product = await Product.findById(productId);
+    if (!product) {
+      return NextResponse.json(
+        { message: "Producto no encontrado" },
+        { status: 404 }
+      );
+    }
     return NextResponse.json(product, { status: 200 });
   } catch (error: any) {
-    console.error("Error obteniendo producto:", error);
-    // Si el ID no es válido (CastError de Mongoose)
-    if (error?.name === "CastError") {
-      return NextResponse.json({ message: "ID inválido" }, { status: 400 });
-    }
-    return NextResponse.json({ message: "Error en el servidor" }, { status: 500 });
+    console.error("Error en GET /api/products/[productId]:", error);
+    return NextResponse.json(
+      { message: "Error interno del servidor" },
+      { status: 500 }
+    );
   }
 }
 
-// ✅ PUT: actualizar un producto por ID
+// ✅ PUT - Actualizar producto
 export async function PUT(
   req: Request,
-  { params }: { params: { productId: string } }
+  context: { params: Promise<{ productId: string }> }
 ) {
+  const { productId } = await context.params; // 👈 Nuevo comportamiento
+
   try {
-    const body = await req.json();
+    const data = await req.json();
     await connectMongoose();
-
-    const updatedProduct = await Product.findByIdAndUpdate(
-      params.productId,
-      body,
-      { new: true, runValidators: true }
-    );
-
-    if (!updatedProduct) {
-      return NextResponse.json({ message: "Producto no encontrado" }, { status: 404 });
+    const updated = await Product.findByIdAndUpdate(productId, data, {
+      new: true,
+      runValidators: true,
+    });
+    if (!updated) {
+      return NextResponse.json(
+        { message: "Producto no encontrado" },
+        { status: 404 }
+      );
     }
-
-    return NextResponse.json(
-      { message: "Producto actualizado", product: updatedProduct },
-      { status: 200 }
-    );
+    return NextResponse.json(updated, { status: 200 });
   } catch (error: any) {
-    console.error("Error actualizando producto:", error);
-    if (error?.name === "CastError") {
-      return NextResponse.json({ message: "ID inválido" }, { status: 400 });
-    }
-    return NextResponse.json({ message: "Fallo al actualizar producto" }, { status: 500 });
+    console.error("Error en PUT /api/products/[productId]:", error);
+    return NextResponse.json(
+      { message: "Error interno del servidor" },
+      { status: 500 }
+    );
   }
 }
 
-// ✅ DELETE: eliminar un producto por ID
+// ✅ DELETE - Eliminar producto
 export async function DELETE(
   req: Request,
-  { params }: { params: { productId: string } }
+  context: { params: Promise<{ productId: string }> }
 ) {
+  const { productId } = await context.params; // 👈 Nuevo comportamiento
+
   try {
     await connectMongoose();
-    const deleted = await Product.findByIdAndDelete(params.productId);
-
+    const deleted = await Product.findByIdAndDelete(productId);
     if (!deleted) {
-      return NextResponse.json({ message: "Producto no encontrado" }, { status: 404 });
+      return NextResponse.json(
+        { message: "Producto no encontrado" },
+        { status: 404 }
+      );
     }
-
     return NextResponse.json(
-      { message: "Producto eliminado", product: deleted },
+      { message: "Producto eliminado correctamente" },
       { status: 200 }
     );
   } catch (error: any) {
-    console.error("Error eliminando producto:", error);
-    if (error?.name === "CastError") {
-      return NextResponse.json({ message: "ID inválido" }, { status: 400 });
-    }
-    return NextResponse.json({ message: "Fallo al eliminar producto" }, { status: 500 });
+    console.error("Error en DELETE /api/products/[productId]:", error);
+    return NextResponse.json(
+      { message: "Error interno del servidor" },
+      { status: 500 }
+    );
   }
 }

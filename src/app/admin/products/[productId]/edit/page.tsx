@@ -1,18 +1,12 @@
 import ProductForm from "../../components/ProductForm";
 
-// Definimos la interfaz de los parámetros de la página
-interface EditProductPageProps {
-  params: {
-    productId: string;
-  };
-}
+// ✅ Fijamos el tipo correcto que Next.js 15 espera
+type PageProps = {
+  params: Promise<{ productId: string }>;
+};
 
-// ✅ Hacemos el componente 'async' para el manejo seguro de 'params'
-export default async function EditProductPage({
-  params,
-}: EditProductPageProps) {
-  // Accedemos directamente a la propiedad para asegurar la compatibilidad asíncrona.
-  const productId = params.productId;
+export default async function EditProductPage({ params }: PageProps) {
+  const { productId } = await params; // ✅ ahora usamos await, porque Next espera una Promise
 
   if (!productId) {
     return (

@@ -1,116 +1,86 @@
-// ✅ versión corregida
 import { NextResponse } from "next/server";
 import { connectMongoose } from "@/lib/mongooseClient";
 import { Product } from "@/models/Product";
-import { checkAdmin } from "@/lib/apiMiddleware";
 
 export const runtime = "nodejs";
 
-// GET: Obtener un producto por ID
+// ✅ GET - Obtener producto por ID
 export async function GET(
   req: Request,
-  { params }: { params: { productId: string } }
+  context: { params: Promise<{ productId: string }> }
 ) {
-  const authCheck = await checkAdmin(req);
-  if (authCheck.status !== 200) {
-    return NextResponse.json(
-      { message: authCheck.message },
-      { status: authCheck.status }
-    );
-  }
+  const { productId } = await context.params;
 
   try {
     await connectMongoose();
-    const product = await Product.findById(params.productId);
+    const product = await Product.findById(productId);
     if (!product) {
       return NextResponse.json(
         { message: "Producto no encontrado" },
         { status: 404 }
       );
     }
-    return NextResponse.json(product, { status: 200 });
+    return NextResponse.json(product);
   } catch (error) {
-    console.error("Error obteniendo producto:", error);
+    console.error("Error en GET /api/products/[productId]:", error);
     return NextResponse.json(
-      { message: "Error en el servidor" },
+      { message: "Error interno del servidor" },
       { status: 500 }
     );
   }
 }
 
-// PUT: Actualizar un producto por ID
+// ✅ PUT - Actualizar producto
 export async function PUT(
   req: Request,
-  { params }: { params: { productId: string } }
+  context: { params: Promise<{ productId: string }> }
 ) {
-  const authCheck = await checkAdmin(req);
-  if (authCheck.status !== 200) {
-    return NextResponse.json(
-      { message: authCheck.message },
-      { status: authCheck.status }
-    );
-  }
+  const { productId } = await context.params;
 
   try {
-    const body = await req.json();
+    const data = await req.json();
     await connectMongoose();
-    const updatedProduct = await Product.findByIdAndUpdate(
-      params.productId,
-      body,
-      {
-        new: true,
-        runValidators: true,
-      }
-    );
-    if (!updatedProduct) {
+    const updated = await Product.findByIdAndUpdate(productId, data, {
+      new: true,
+      runValidators: true,
+    });
+    if (!updated) {
       return NextResponse.json(
         { message: "Producto no encontrado" },
         { status: 404 }
       );
     }
-    return NextResponse.json(
-      { message: "Producto actualizado", product: updatedProduct },
-      { status: 200 }
-    );
+    return NextResponse.json(updated);
   } catch (error) {
-    console.error("Error actualizando producto:", error);
+    console.error("Error en PUT /api/products/[productId]:", error);
     return NextResponse.json(
-      { message: "Fallo al actualizar producto" },
+      { message: "Error interno del servidor" },
       { status: 500 }
     );
   }
 }
 
-// DELETE: Eliminar un producto por ID
+// ✅ DELETE - Eliminar producto
 export async function DELETE(
   req: Request,
-  { params }: { params: { productId: string } }
+  context: { params: Promise<{ productId: string }> }
 ) {
-  const authCheck = await checkAdmin(req);
-  if (authCheck.status !== 200) {
-    return NextResponse.json(
-      { message: authCheck.message },
-      { status: authCheck.status }
-    );
-  }
+  const { productId } = await context.params;
 
   try {
     await connectMongoose();
-    const deleted = await Product.findByIdAndDelete(params.productId);
+    const deleted = await Product.findByIdAndDelete(productId);
     if (!deleted) {
       return NextResponse.json(
         { message: "Producto no encontrado" },
         { status: 404 }
       );
     }
-    return NextResponse.json(
-      { message: "Producto eliminado", product: deleted },
-      { status: 200 }
-    );
+    return NextResponse.json({ message: "Producto eliminado correctamente" });
   } catch (error) {
-    console.error("Error eliminando producto:", error);
+    console.error("Error en DELETE /api/products/[productId]:", error);
     return NextResponse.json(
-      { message: "Fallo al eliminar producto" },
+      { message: "Error interno del servidor" },
       { status: 500 }
     );
   }

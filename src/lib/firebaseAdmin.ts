@@ -1,28 +1,27 @@
-// src/lib/firebaseAdmin.ts
-import admin from "firebase-admin";
+import * as admin from "firebase-admin";
+
+// ⚠️ No uses dotenv en producción de Vercel (ya carga automáticamente las env)
+const projectId = process.env.FIREBASE_PROJECT_ID;
+const clientEmail = process.env.FIREBASE_CLIENT_EMAIL;
+const privateKey = process.env.FIREBASE_PRIVATE_KEY?.replace(/\\n/g, "\n");
 
 if (!admin.apps.length) {
-  const privateKey = process.env.FIREBASE_PRIVATE_KEY;
-
-  if (!privateKey) {
-    console.error("❌ FALTA FIREBASE_PRIVATE_KEY en variables de entorno");
-  }
-
-  try {
-    admin.initializeApp({
-      credential: admin.credential.cert({
-        projectId: process.env.FIREBASE_PROJECT_ID,
-        clientEmail: process.env.FIREBASE_CLIENT_EMAIL,
-        // 🔥 Esta línea es la clave: corrige el formato en Vercel
-        privateKey: privateKey?.replace(/\\n/g, "\n"),
-      }),
-    });
-
-    console.log("✅ Firebase Admin inicializado correctamente");
-  } catch (err) {
-    console.error("❌ Error inicializando Firebase Admin:", err);
+  if (!projectId || !clientEmail || !privateKey) {
+    console.error("❌ Faltan variables de entorno de Firebase Admin");
+  } else {
+    try {
+      admin.initializeApp({
+        credential: admin.credential.cert({
+          projectId,
+          clientEmail,
+          privateKey,
+        }),
+      });
+      console.log("✅ Firebase Admin inicializado correctamente");
+    } catch (error) {
+      console.error("❌ Error inicializando Firebase Admin:", error);
+    }
   }
 }
 
-export const adminApp = admin;
 export { admin };

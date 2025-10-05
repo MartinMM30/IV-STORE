@@ -2,7 +2,7 @@
 import { NextResponse } from "next/server";
 import { connectMongoose } from "@/lib/mongooseClient";
 import { User } from "@/models/User";
-import jwt from "jsonwebtoken"; // npm i jsonwebtoken
+import jwt from "jsonwebtoken";
 
 export async function POST(req: Request) {
   try {
@@ -14,10 +14,9 @@ export async function POST(req: Request) {
       );
     }
 
-    // 🧩 Conexión a Mongo
     await connectMongoose();
-
     const existingUser = await User.findOne({ email });
+
     if (!existingUser) {
       return NextResponse.json(
         { message: "Usuario no encontrado." },
@@ -25,31 +24,30 @@ export async function POST(req: Request) {
       );
     }
 
-    // 🔐 Generar un token JWT con datos mínimos
     const token = jwt.sign(
       {
         id: existingUser._id,
         email: existingUser.email,
         role: existingUser.role,
       },
-      process.env.JWT_SECRET!, // asegúrate de tenerla en Vercel
+      process.env.JWT_SECRET!,
       { expiresIn: "7d" }
     );
 
-    // 🍪 Guardar cookie segura (nombre unificado: "token")
     const response = NextResponse.json(
       { message: "Inicio de sesión exitoso", user: existingUser },
       { status: 200 }
     );
 
+    // 🍪 Ajuste crucial para Vercel/HTTPS
     response.cookies.set({
-      name: "token", // 👈 mismo nombre que usa el middleware
+      name: "token",
       value: token,
       httpOnly: true,
-      secure: process.env.NODE_ENV === "production", // solo HTTPS en prod
-      sameSite: process.env.NODE_ENV === "production" ? "none" : "lax",
+      secure: true, // 🔒 HTTPS obligatorio en prod
+      sameSite: "none", // 🔥 necesario para enviar cookie al subdominio de vercel
       path: "/",
-      maxAge: 60 * 60 * 24 * 7, // 7 días
+      maxAge: 60 * 60 * 24 * 7,
     });
 
     return response;

@@ -1,4 +1,6 @@
 import ProductForm from "../../components/ProductForm";
+export const dynamic = "force-dynamic"; // evita prerender estático
+export const runtime = "nodejs";
 
 // ✅ Fijamos el tipo correcto que Next.js 15 espera
 type PageProps = {

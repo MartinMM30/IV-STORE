@@ -1,5 +1,8 @@
 "use client";
 
+export const dynamic = "force-dynamic"; // evita prerender estático
+export const runtime = "nodejs";
+
 import { useState, useEffect } from "react";
 import { useAuth } from "@/context/AuthContext";
 import { useRouter } from "next/navigation";
@@ -38,21 +41,21 @@ export default function ProductForm({ productId }: ProductFormProps) {
     const fetchProduct = async () => {
       // ✅ Agregamos una comprobación explícita para `user`
       if (!user || !productId) return;
-      
+
       setLoadingData(true);
       setErrorMsg(null);
       try {
         const token = await user.getIdToken();
         const res = await fetch(`/api/admin/products/${productId}`, {
           headers: {
-            "Authorization": `Bearer ${token}`
-          }
+            Authorization: `Bearer ${token}`,
+          },
         });
-        
+
         if (!res.ok) {
           throw new Error("Error cargando producto");
         }
-        
+
         const data = await res.json();
         setFormData({ ...data, images: data.images || [] });
       } catch (err) {
@@ -62,7 +65,7 @@ export default function ProductForm({ productId }: ProductFormProps) {
         setLoadingData(false);
       }
     };
-    
+
     // ✅ Aseguramos que el fetch solo se ejecute si hay un `user`
     if (productId && isAdmin && user) {
       fetchProduct();
@@ -88,9 +91,10 @@ export default function ProductForm({ productId }: ProductFormProps) {
 
       const res = await fetch(url, {
         method,
-        headers: { "Content-Type": "application/json",
-          "Authorization": `Bearer ${token}`
-          },
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
         body: JSON.stringify(formData),
       });
 
@@ -105,17 +109,19 @@ export default function ProductForm({ productId }: ProductFormProps) {
       setErrorMsg(`Hubo un error guardando el producto: ${err.message}`);
     }
   };
-  
+
   if (!isAdmin) {
     return <div className="p-6 text-red-500">Acceso denegado.</div>;
   }
 
   if (loadingData) {
-    return <div className="p-6 text-blue-500">Cargando datos del producto...</div>;
+    return (
+      <div className="p-6 text-blue-500">Cargando datos del producto...</div>
+    );
   }
 
   return (
-   <form
+    <form
       onSubmit={handleSubmit}
       className="flex flex-col gap-5 max-w-xl mx-auto bg-background/60 border border-neutral-800 rounded-2xl p-8 shadow-lg"
     >
@@ -151,7 +157,9 @@ export default function ProductForm({ productId }: ProductFormProps) {
       <textarea
         placeholder="Descripción del producto"
         value={formData.description || ""}
-        onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+        onChange={(e) =>
+          setFormData({ ...formData, description: e.target.value })
+        }
         rows={4}
         className="w-full bg-transparent border border-neutral-700 text-sm text-foreground px-4 py-3 rounded-md focus:border-accent focus:outline-none transition"
       />

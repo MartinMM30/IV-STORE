@@ -1,4 +1,3 @@
-
 import "./globals.css";
 
 import { AuthProvider } from "@/context/AuthContext";
@@ -7,49 +6,34 @@ import { AuthProvider } from "@/context/AuthContext";
 
 import { CartProvider } from "@/context/CartContext";
 
-
-
 import Navbar from "@/components/Navbar";
 
 import Footer from "@/components/Footer";
 
-
-
 export const metadata = {
+  title: "IV Design",
 
-  title: "IV Design",
-
-  description: "E-commerce demo con Next.js y Tailwind",
-
+  description: "E-commerce demo con Next.js y Tailwind",
 };
 
-
-
-export default function RootLayout({ children }: { children: React.ReactNode; }) {
+export default function RootLayout({
+  children,
+}: {
+  children: React.ReactNode;
+}) {
   return (
     <html lang="es">
       <body className="flex flex-col min-h-screen">
-
-        {/* AuthProvider envuelve todo, incluyendo el CartProvider */}
-
-        <AuthProvider>
-
-          <CartProvider>
-
-            <Navbar />
-
-            <main className="flex-1 container mx-auto px-4 py-6">{children}</main>
-
-            <Footer />
-
-          </CartProvider>
-
-        </AuthProvider>
-
-      </body>
-
-    </html>
-
-  );
-
+        <AuthProvider>
+          <CartProvider>
+            <Navbar />
+            <main className="flex-1 container mx-auto px-4 py-6">
+              {children}
+            </main>
+            <Footer />
+          </CartProvider>
+        </AuthProvider>
+      </body>
+    </html>
+  );
 }

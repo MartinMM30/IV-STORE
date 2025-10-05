@@ -1,29 +1,30 @@
-// src/app/api/users/register/route.ts
+// src/app/api/auth/login/route.ts
 import { NextResponse } from "next/server";
-import { connectMongo } from "@/lib/mongoClient";
+import { connectMongoose } from "@/lib/mongooseClient";
+import { User } from "@/models/User"; // ✅ Import the Mongoose User model
 
-export async function POST(request: Request) {
+export async function POST(req: Request) {
   try {
-    const { uid, email } = await request.json();
+    const { email } = await req.json();
 
-    const client = await connectMongo();
-    const db = client.db("iv_database");
-
-    const existingUser = await db.collection("users").findOne({ uid });
-    if (existingUser) {
-      return NextResponse.json({ message: "Usuario ya existe." }, { status: 409 });
+    if (!email) {
+      return NextResponse.json({ error: "El email es obligatorio" }, { status: 400 });
     }
 
-    await db.collection("users").insertOne({
-      uid,
-      email,
-      createdAt: new Date(),
-    });
+    await connectMongoose(); // ✅ Connect to MongoDB
 
-    return NextResponse.json({ message: "Usuario creado." }, { status: 201 });
+    // 1. Find the user by email (using Mongoose)
+    const existingUser = await User.findOne({ email }); // ✅ Use the User model
+
+    if (!existingUser) {
+      return NextResponse.json({ message: "Usuario no encontrado." }, { status: 404 });
+    }
+
+    // 2. Return a success message or a token
+    return NextResponse.json({ message: "Inicio de sesión exitoso.", user: existingUser }, { status: 200 });
 
   } catch (error) {
-    console.error("Error creando usuario en MongoDB:", error);
+    console.error("❌ Error en la API de Login:", error);
     return NextResponse.json({ error: "Error interno." }, { status: 500 });
   }
 }

@@ -49,7 +49,8 @@ async function fetchProduct(id: string): Promise<Product | null> {
 
 // El componente de página debe ser 'async'
 export default async function ProductPage({ params }: ProductPageProps) {
-  const product = await fetchProduct(params.id);
+   const awaitedParams = await params;
+    const product = await fetchProduct(awaitedParams.id);
 
   // Si no se encuentra el producto (ej. 404), usamos la función de Next.js
   if (!product) {

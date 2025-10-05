@@ -1,145 +1,164 @@
-// src/app/api/orders/route.ts
-
 import { NextResponse } from "next/server";
-// Importación nombrada correcta para tu mongoClient.ts
-import { connectMongo } from "@/lib/mongoClient"; 
-import { ObjectId } from "mongodb";
+import { connectMongoose } from "@/lib/mongooseClient";
+import { Product } from "@/models/Product";
+import { Order } from "@/models/Orders"; // Asegúrate de que este sea tu modelo correcto
+import { Cart } from "@/models/Cart"; 
 
-// Manejar la creación de una nueva orden
+// =================================================================
+// POST: CREAR NUEVA ORDEN
+// =================================================================
 export async function POST(request: Request) {
-  try {
-    const body = await request.json();
-    const { userId, items, shippingAddress } = body; 
+  try {
+    const body = await request.json();
+    const { userId, items, shippingAddress, guestInfo } = body;
 
-    // 1. Validaciones básicas
-    if (!userId || !items || items.length === 0 || !shippingAddress) {
+    // ... (El resto de tu código de validación y conexión a la DB se mantiene igual) ...
+    if (!items || items.length === 0) {
+      return NextResponse.json(
+        { error: "No se proporcionaron productos para la orden." },
+        { status: 400 }
+      );
+    }
+
+    if (!shippingAddress || !shippingAddress.name || !shippingAddress.email || !shippingAddress.address || !shippingAddress.city || !shippingAddress.country || !shippingAddress.zipCode) {
+      return NextResponse.json(
+        { error: "Faltan campos de dirección de envío requeridos." },
+        { status: 400 }
+      );
+    }
+    
+    if (!userId && (!guestInfo || !guestInfo.name || !guestInfo.email)) {
+      return NextResponse.json(
+        { error: "Se requiere un usuario logueado o información de invitado (nombre y email)." },
+        { status: 400 }
+      );
+    }
+    
+    await connectMongoose();
+    
+    let totalPrice = 0;
+    const orderItems: any[] = [];
+    
+    const updatePromises: Promise<any>[] = [];
+    
+    for (const item of items) {
+      const product = await Product.findById(item.productId, { name: 1, price: 1, stock: 1 });
+      
+      if (!product) {
+        return NextResponse.json(
+          { error: `Producto no encontrado: ${item.productId}` },
+          { status: 404 }
+        );
+      }
+      
+      if (typeof product.stock !== "number" || product.stock < item.quantity) {
+        return NextResponse.json(
+          { error: `Stock insuficiente para ${product.name}. Disponible: ${product.stock}` },
+          { status: 400 }
+        );
+      }
+      
+      orderItems.push({
+        productId: product._id,
+        name: product.name,
+        quantity: item.quantity,
+        price: product.price,
+      });
+
+      totalPrice += product.price * item.quantity;
+      
+      updatePromises.push(
+        Product.findByIdAndUpdate(item.productId, { $inc: { stock: -item.quantity } })
+      );
+    }
+    
+    const orderDocument = {
+      userId: userId || null,
+      guestInfo: userId ? null : guestInfo,
+      orderItems,
+      shippingAddress: shippingAddress,
+      totalPrice,
+      status: "pendiente",
+      createdAt: new Date(),
+    };
+    
+    const result = await Order.create(orderDocument);
+    await Promise.all(updatePromises);
+
+    // ✅ LÍNEA CLAVE: ELIMINA EL CARRITO DEL USUARIO DESPUÉS DE LA COMPRA
+    if (userId) {
+      await Cart.deleteOne({ userId });
+      console.log(`🛒 Carrito del usuario ${userId} eliminado después de la compra.`);
+    }
+
+    return NextResponse.json(
+      {
+        message: "Orden creada exitosamente",
+        orderId: result._id.toString(),
+      },
+      { status: 201 }
+    );
+  } catch (error) {
+    console.error("❌ Error en la API de Órdenes (POST):", error);
+    return NextResponse.json(
+      { error: "Error interno al procesar la orden." },
+      { status: 500 }
+    );
+  }
+}
+
+// =================================================================
+// PUT: ACTUALIZAR ESTADO DE ORDEN (Pago Simulado)
+// =================================================================
+export async function PUT(request: Request) {
+  try {
+    await connectMongoose();
+    const body = await request.json();
+    const { orderId, newStatus } = body;
+
+    if (!orderId || !newStatus) {
       return NextResponse.json(
-        { error: "Faltan datos requeridos para la orden (userId, items, address)." },
+        { error: "Se requieren 'orderId' y 'newStatus'." },
         { status: 400 }
       );
     }
-    if (!ObjectId.isValid(userId)) {
-        return NextResponse.json({ error: "ID de usuario inválido." }, { status: 400 });
+
+    // Validación simple del estado
+    const validStatuses = ["pagado", "enviado", "entregado", "cancelado"];
+    if (!validStatuses.includes(newStatus)) {
+      return NextResponse.json(
+        { error: "Estado inválido." },
+        { status: 400 }
+      );
     }
 
-    // 2. Conexión a la base de datos
-    const client = await connectMongo();
-    const db = client.db("iv_database");
-    const productsCollection = db.collection("products");
-    const ordersCollection = db.collection("orders");
-
-    let totalPrice = 0;
-    const orderItems: any[] = [];
-    
-    // 3. Verificar inventario y calcular el total
-    for (const item of items) {
-        if (!ObjectId.isValid(item.productId)) {
-            return NextResponse.json({ error: `ID de producto inválido: ${item.productId}` }, { status: 400 });
-        }
-        const productId = new ObjectId(item.productId);
-
-        // Utilizamos projection para obtener solo _id y stock, lo que puede ayudar a confirmar el tipo
-        const product = await productsCollection.findOne({ _id: productId }, { projection: { name: 1, price: 1, stock: 1 } });
-
-        if (!product) {
-            return NextResponse.json(
-              { error: `Producto con ID ${item.productId} no encontrado.` },
-              { status: 404 }
-            );
-        }
-
-        // *** Refuerzo CRÍTICO para depuración de stock ***
-        if (typeof product.stock !== 'number') {
-            console.error(`❌ [TIPO DE DATO ERRÓNEO] El stock de ${product.name} (ID: ${item.productId}) NO es un número. Tipo actual: ${typeof product.stock}. VALOR: ${product.stock}`);
-            return NextResponse.json(
-                { error: `Error de datos: El inventario de ${product.name} no es un formato numérico válido en la base de datos. Por favor, corríjalo en MongoDB Compass.` },
-                { status: 500 }
-            );
-        }
-        // *************************************************
-
-        // Si el stock es insuficiente.
-        if (product.stock < item.quantity) {
-            return NextResponse.json(
-              { error: `Inventario insuficiente o inválido para: ${product.name}. Stock: ${product.stock}` },
-              { status: 400 }
-            );
-        }
-
-        // Añadir el ítem a la orden
-        orderItems.push({
-            productId: productId,
-            name: product.name,
-            quantity: item.quantity,
-            price: product.price, 
-        });
-        totalPrice += product.price * item.quantity;
-    }
-    
-    console.log("🟢 [ORDER API] Verificación de inventario exitosa. Total a pagar:", totalPrice);
-    
-    // 4. Crear el Objeto de la Orden
-    const orderDocument = {
-        userId: new ObjectId(userId),
-        orderItems: orderItems,
-        shippingAddress: shippingAddress,
-        totalPrice: totalPrice,
-        status: "pendiente", 
-        createdAt: new Date(),
-    };
-
-    // 5. Insertar la Orden en la base de datos
-    const result = await ordersCollection.insertOne(orderDocument);
-    console.log("✅ [ORDER API] Orden insertada con ID:", result.insertedId);
-
-    // 6. Reducir el Inventario (Stock)
-    const updatePromises = items.map(async (item: any) => {
-        const productIdToUpdate = new ObjectId(item.productId);
-        const quantityToDecrease = item.quantity;
-        
-        // Log para depuración
-        console.log(`⏳ [STOCK] Intentando actualizar Producto ID: ${productIdToUpdate}, Reducir por: ${quantityToDecrease}`);
-        
-        const updateResult = await productsCollection.updateOne(
-            { _id: productIdToUpdate },
-            { $inc: { stock: -quantityToDecrease } } 
-        );
-
-        // Log final
-        console.log(`✨ [STOCK] Resultado de la actualización para ${productIdToUpdate}: matchedCount=${updateResult.matchedCount}, modifiedCount=${updateResult.modifiedCount}`);
-
-        if (updateResult.matchedCount === 0) {
-            throw new Error(`Fallo de stock: Producto ${item.productId} no encontrado durante la actualización.`);
-        }
-    });
-    
-    await Promise.all(updatePromises);
-
-    // 7. Éxito
-    return NextResponse.json(
-      { 
-        message: "Orden creada exitosamente y stock actualizado.",
-        orderId: result.insertedId,
-      },
-      { status: 201 }
+    // 🚨 NOTA: Si orderId no es un ObjectId válido, Mongoose lo intentará convertir y fallará silenciosamente o tirará error.
+    // Usamos Order.findByIdAndUpdate para actualizar el estado.
+    const updatedOrder = await Order.findByIdAndUpdate(
+      orderId,
+      { status: newStatus },
+      { new: true } // Devuelve el documento actualizado
     );
 
-  } catch (error) {
-    console.error("❌ Error en la API de Órdenes:", error);
-    if (error instanceof Error && error.message.includes("Fallo de stock")) {
-        return NextResponse.json(
-          { error: error.message },
-          { status: 500 }
-        );
-    }
-    if (error instanceof Error && error.message.includes("Error de datos")) {
-        return NextResponse.json(
-          { error: error.message },
-          { status: 500 }
-        );
-    }
+    if (!updatedOrder) {
+      return NextResponse.json(
+        { error: `Orden con ID ${orderId} no encontrada.` },
+        { status: 404 }
+      );
+    }
+
     return NextResponse.json(
-      { error: "Fallo interno al procesar la orden." },
+      {
+        message: `Estado de la orden ${orderId} actualizado a ${newStatus}.`,
+        order: updatedOrder,
+      },
+      { status: 200 }
+    );
+  } catch (error) {
+    console.error("❌ Error en la API de Órdenes (PUT):", error);
+    // Nota: El error de Cast to ObjectId volverá a aparecer aquí si el ID no es ObjectId
+    return NextResponse.json(
+      { error: "Error interno al actualizar la orden." },
       { status: 500 }
     );
   }

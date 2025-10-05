@@ -1,57 +1,71 @@
-import { NextResponse } from 'next/server';
+// app/api/email/route.ts
 
-/**
- * @name POST /api/email
- * @description API endpoint para simular el envío de un email de confirmación de orden.
- * * En un entorno real, aquí se integraría un servicio como SendGrid, Nodemailer o Postmark.
- */
+import { NextResponse } from "next/server";
+import { sendEmail } from "@/lib/resend"; // Importa la nueva librería
+
+// Opcional: crea tu plantilla HTML aquí o en un componente de React aparte
+const createEmailHtml = (orderId: string, items: any[], totalAmount: number) => {
+  const orderSummaryHtml = items.map((item: any) => `
+    <tr>
+      <td>${item.name}</td>
+      <td style="text-align: right;">${item.quantity}</td>
+      <td style="text-align: right;">$${(item.price * item.quantity).toFixed(2)}</td>
+    </tr>
+  `).join('');
+
+  return `
+    <div style="font-family: Arial, sans-serif; max-width: 600px; margin: auto; border: 1px solid #ddd; padding: 20px;">
+      <h2 style="text-align: center; color: #333;">Confirmación de Pedido</h2>
+      <hr style="border: none; border-top: 1px solid #eee;">
+      <p>¡Gracias por tu compra! Tu pedido ha sido confirmado.</p>
+      <p><strong>Número de Pedido:</strong> #${orderId.substring(0, 8)}</p>
+      <table style="width: 100%; border-collapse: collapse; margin-top: 20px;">
+        <thead>
+          <tr style="background-color: #f4f4f4;">
+            <th style="padding: 10px; text-align: left;">Producto</th>
+            <th style="padding: 10px; text-align: right;">Cantidad</th>
+            <th style="padding: 10px; text-align: right;">Subtotal</th>
+          </tr>
+        </thead>
+        <tbody>
+          ${orderSummaryHtml}
+        </tbody>
+        <tfoot>
+          <tr style="border-top: 2px solid #333;">
+            <td colspan="2" style="padding: 10px; text-align: right;"><strong>Total:</strong></td>
+            <td style="padding: 10px; text-align: right;"><strong>$${totalAmount.toFixed(2)}</strong></td>
+          </tr>
+        </tfoot>
+      </table>
+      <p style="text-align: center; margin-top: 40px; color: #777;">Si tienes alguna pregunta, no dudes en contactarnos.</p>
+    </div>
+  `;
+};
 export async function POST(request: Request) {
-    try {
-        const body = await request.json();
-        
-        // -------------------------------------------------------------
-        // TODO: INTEGRAR SENDGRID / POSTMARK AQUÍ (Reemplazar la simulación)
-        // -------------------------------------------------------------
-        
-        // ** SIMULACIÓN DEL ENVÍO **
-        // Esta sección imprime los datos del pedido en la consola del servidor (Node.js)
-        console.log("-----------------------------------------");
-        console.log("📧 SIMULACIÓN: Email de Confirmación Enviado");
-        
-        // CORRECCIÓN 1: Manejamos undefined para email y usamos un valor por defecto.
-        const recipientEmail = body.shippingAddress?.email || 'email-no-proporcionado@ejemplo.com';
-        console.log(`Destinatario: ${recipientEmail}`);
-        
-        // CORRECCIÓN 2: Manejamos undefined para totalPrice (siempre 0 si falta).
-        const orderTotal = body.totalPrice || 0;
-        console.log(`Total: $${orderTotal.toFixed(2)}`);
-        
-        // CORRECCIÓN 3: Manejamos undefined para orderItems (siempre array vacío si falta), previniendo el error .map().
-        const itemsList = (body.orderItems || []).map(
-            (item: any) => `${item.name} x${item.quantity}`
-        ).join(', ');
-        
-        console.log(`Número de Orden: ${body.orderId}`);
-        console.log(`Detalles del pedido: ${itemsList}`);
-        console.log("-----------------------------------------");
+  try {
+    const body = await request.json();
+    const { orderId, recipientEmail, items, totalAmount } = body;
 
-        // Simula un retraso de 500ms como si estuviera llamando a un servicio externo.
-        await new Promise(resolve => setTimeout(resolve, 500));
+    // ... (validaciones)
 
-        // Si la simulación es exitosa (código 200), retorna una respuesta positiva
-        return NextResponse.json({ 
-            success: true, 
-            message: "Email de confirmación simulado enviado con éxito.",
-            orderId: body.orderId
-        }, { status: 200 });
+    const emailHtml = createEmailHtml(orderId, items, totalAmount);
 
-    } catch (error) {
-        console.error("Error al simular el envío de email:", error);
-        // Devolvemos 500 solo si el error es grave y no se pudo procesar la solicitud.
-        return NextResponse.json({ 
-            success: false, 
-            message: "Fallo interno en la API de simulación de email.",
-            error: (error as Error).message
-        }, { status: 500 });
-    }
+    // Usa la función de la librería
+    await sendEmail({
+      to: recipientEmail,
+      subject: `Confirmación de Pedido #${orderId.substring(0, 8)}`,
+      html: emailHtml,
+    });
+
+    return NextResponse.json(
+      { message: "Correo de confirmación enviado con éxito." },
+      { status: 200 }
+    );
+  } catch (error) {
+    console.error("❌ Error en la API de Correo:", error);
+    return NextResponse.json(
+      { error: "Error interno al procesar el envío de correo." },
+      { status: 500 }
+    );
+  }
 }

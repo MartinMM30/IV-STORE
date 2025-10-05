@@ -2,21 +2,22 @@
 
 import Link from "next/link";
 import { useCart } from "@/context/CartContext";
-import { useAuth } from "@/context/AuthContext";
+import { useAuth } from "@/context/AuthContext"; // Import your updated hook
 
 export default function Navbar() {
   const { cart } = useCart();
-  const { user, logout } = useAuth();
+  // Get isAdmin directly from the useAuth hook
+  const { user, userProfile, logout, isAdmin } = useAuth(); 
   const totalItems = cart.reduce((sum, item) => sum + item.quantity, 0);
 
-  const handleLogout = async () => {
-    try {
-      await logout();
-      // Opcional: puedes redirigir al home o login si quieres con router.push("/login")
-    } catch (error) {
-      console.error("Error al cerrar sesión:", error);
-    }
-  };
+const handleLogout = async () => {
+   try {
+    await logout(); // CartContext detectará el cambio y limpiará automáticamente
+    // router.push("/"); // opcional
+  } catch (error) {
+    console.error("Error al cerrar sesión:", error);
+  }
+};
 
   return (
     <nav className="bg-white shadow-sm border-b">
@@ -46,7 +47,20 @@ export default function Navbar() {
           {/* Autenticación */}
           {user ? (
             <>
-              <span className="text-gray-600 text-sm">Hola, {user.email}</span>
+              <span className="text-gray-600 text-sm">
+                Hola, {userProfile?.nombre || user.email}
+              </span>
+
+              {/* ✅ Muestra el link solo si isAdmin es true */}
+              {isAdmin && ( 
+                <Link
+                  href="/admin/products"
+                  className="text-sm bg-indigo-500 text-white px-3 py-1 rounded hover:bg-indigo-600 transition"
+                >
+                  Admin
+                </Link>
+              )}
+
               <button
                 onClick={handleLogout}
                 className="text-sm bg-red-500 text-white px-3 py-1 rounded hover:bg-red-600 transition"

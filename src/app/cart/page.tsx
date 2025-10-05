@@ -17,12 +17,12 @@ export default function CartPage() {
       <div className="space-y-4">
         {cart.map((item) => (
           <div
-            key={item.id}
+           key={item._id} 
             className="flex items-center justify-between border p-4 rounded"
           >
             <div className="flex items-center gap-4">
               <img
-                src={item.image}
+                src={Array.isArray(item.images) ? item.images[0] : item.images}
                 alt={item.name}
                 className="w-16 h-16 rounded"
               />
@@ -37,12 +37,14 @@ export default function CartPage() {
                 value={item.quantity}
                 min={1}
                 className="w-16 border rounded px-2"
+                placeholder="Cantidad"
+                title="Cantidad"
                 onChange={(e) =>
-                  updateQuantity(item.id, Number(e.target.value))
+                  updateQuantity(item._id, Number(e.target.value))
                 }
               />
               <button
-                onClick={() => removeFromCart(item.id)}
+                onClick={() => removeFromCart(item._id)}
                 className="px-3 py-1 bg-red-500 text-white rounded hover:bg-red-600"
               >
                 X

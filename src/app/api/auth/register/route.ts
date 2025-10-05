@@ -1,32 +1,51 @@
+// src/app/api/auth/register/route.ts
 import { NextResponse } from "next/server";
-import { connectMongo } from "@/lib/mongoClient";
+import { createUserWithEmailAndPassword } from "firebase/auth";
+import { auth } from "@/lib/firebase";
+import { connectMongoose } from "@/lib/mongooseClient";
+import { User } from "@/models/User"; // ✅ Importamos el modelo de usuario de Mongoose
 
-export async function POST(request: Request) {
+export async function POST(req: Request) {
   try {
-    const { uid, email } = await request.json();
+    const { email, password, nombre, edad, ciudad, pais, telefono } = await req.json();
 
-    if (!uid || !email) {
-      return NextResponse.json({ error: "UID y email requeridos" }, { status: 400 });
+    if (!email || !password) {
+      return NextResponse.json({ error: "Email y password son requeridos" }, { status: 400 });
     }
 
-    const client = await connectMongo();
-    const db = client.db("iv_database");
+    // 1. Crear usuario en Firebase
+    const userCredential = await createUserWithEmailAndPassword(auth, email, password);
+    const { uid } = userCredential.user;
 
-    const existingUser = await db.collection("users").findOne({ uid });
+    // 2. Conectar a Mongo con Mongoose
+    await connectMongoose();
+      const existingUser = await User.findOne({ uid });
     if (existingUser) {
       return NextResponse.json({ message: "Usuario ya existe." }, { status: 409 });
     }
-
-    await db.collection("users").insertOne({
+    
+    // 3. Insertar en Mongo usando el modelo de Mongoose
+    const newUser = await User.create({
       uid,
       email,
+      nombre: nombre || "",
+      edad: edad || null,
+      ciudad: ciudad || "",
+      pais: pais || "",
+      telefono: telefono || "",
+      role: "user", // ✅ El rol por defecto es "user"
       createdAt: new Date(),
     });
 
-    return NextResponse.json({ message: "Usuario creado." }, { status: 201 });
-
-  } catch (error) {
-    console.error("Error creando usuario en MongoDB:", error);
-    return NextResponse.json({ error: "Error interno." }, { status: 500 });
+    return NextResponse.json({ uid: newUser.uid, email: newUser.email, role: newUser.role }, { status: 201 });
+  } catch (error: any) {
+    console.error("❌ Error en register:", error.message);
+    
+    // Manejar error de Firebase (ej. email ya en uso)
+    if (error.code === "auth/email-already-in-use") {
+        return NextResponse.json({ error: "Este email ya está registrado." }, { status: 409 });
+    }
+    
+    return NextResponse.json({ error: error.message }, { status: 500 });
   }
 }

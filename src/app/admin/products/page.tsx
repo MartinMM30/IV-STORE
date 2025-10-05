@@ -1,105 +1,119 @@
 "use client";
 
+export const dynamic = "force-dynamic"; // evita prerender estático
+export const runtime = "nodejs";
+
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useAuth } from "@/context/AuthContext";
 
 interface Product {
-    _id: string;
-    name: string;
-    price: number;
-    stock: number;
+  _id: string;
+  name: string;
+  price: number;
+  stock: number;
 }
 
 export default function AdminProductsPage() {
-    const { isAdmin, loading: authLoading, user } = useAuth();
-    const [products, setProducts] = useState<Product[]>([]);
-    const [loading, setLoading] = useState(true);
-    const [error, setError] = useState<string | null>(null);
+  const { isAdmin, loading: authLoading, user } = useAuth();
+  const [products, setProducts] = useState<Product[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
-    const fetchProducts = async () => {
-        if (!isAdmin && !authLoading) {
-            setLoading(false);
-            setError("Acceso denegado. No eres administrador.");
-            return;
-        }
+  const fetchProducts = async () => {
+    if (!isAdmin && !authLoading) {
+      setLoading(false);
+      setError("Acceso denegado. No eres administrador.");
+      return;
+    }
 
-        if (authLoading || !user) return; 
+    if (authLoading || !user) return;
 
-        try {
-            const token = await user.getIdToken(); 
-            // 🚨 CAMBIO: Llama a la nueva API de admin
-            const res = await fetch("/api/admin/products", {
-                headers: {
-                    "Authorization": `Bearer ${token}` 
-                }
-            });
+    try {
+      const token = await user.getIdToken();
+      // 🚨 CAMBIO: Llama a la nueva API de admin
+      const res = await fetch("/api/admin/products", {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      });
 
-            if (res.status === 401) throw new Error("Acceso no autorizado.");
-            if (!res.ok) throw new Error("Error al cargar productos.");
-            
-            const data = await res.json();
-            // Asumiendo que la API devuelve un array de productos directamente
-            setProducts(data); 
-        } catch (err: any) {
-            console.error("Error cargando productos", err);
-            setError(`No se pudieron cargar los productos: ${err.message}`);
-        } finally {
-            setLoading(false);
-        }
-    };
-    
-    // Al cargar o cambiar el estado de autenticación, recargamos la lista
-    useEffect(() => {
-        fetchProducts();
-    }, [isAdmin, authLoading, user]); 
+      if (res.status === 401) throw new Error("Acceso no autorizado.");
+      if (!res.ok) throw new Error("Error al cargar productos.");
 
-    const handleDelete = async (id: string) => {
-        // 🚨 CORRECCIÓN: Usar prompt para simular confirmación y evitar window.alert/confirm
-        console.log(`⚠️ Solicitud de eliminación del producto ID: ${id}`);
-        
-        // Simulación de Modal de Confirmación
-        const userConfirmation = prompt(`Escribe 'ELIMINAR' para confirmar la eliminación del producto ${id.substring(0, 8)}:`);
-        
-        if (userConfirmation !== 'ELIMINAR') {
-             console.log("Eliminación cancelada por el usuario.");
-             return;
-        }
+      const data = await res.json();
+      // Asumiendo que la API devuelve un array de productos directamente
+      setProducts(data);
+    } catch (err: any) {
+      console.error("Error cargando productos", err);
+      setError(`No se pudieron cargar los productos: ${err.message}`);
+    } finally {
+      setLoading(false);
+    }
+  };
 
-        if (!user) {
-            console.error("No se pudo obtener el token de usuario.");
-            return;
-        }
+  // Al cargar o cambiar el estado de autenticación, recargamos la lista
+  useEffect(() => {
+    fetchProducts();
+  }, [isAdmin, authLoading, user]);
 
-        try {
-            const token = await user.getIdToken(); 
-            const res = await fetch(`/api/admin/products/${id}`, { 
-                method: "DELETE",
-                headers: { "Authorization": `Bearer ${token}` }
-            });
+  const handleDelete = async (id: string) => {
+    // 🚨 CORRECCIÓN: Usar prompt para simular confirmación y evitar window.alert/confirm
+    console.log(`⚠️ Solicitud de eliminación del producto ID: ${id}`);
 
-            if (!res.ok) {
-                const errorData = await res.json();
-                throw new Error(errorData.message || "Error desconocido al eliminar.");
-            }
-            
-            // Si la eliminación es exitosa, recarga la lista
-            fetchProducts();
-            console.log(`✅ Producto ${id.substring(0, 8)} eliminado correctamente.`);
-        } catch (error: any) {
-            console.error("❌ Error de eliminación:", error.message);
-            // Mostrar error en la UI (opcional, aquí lo dejamos en consola para evitar alert)
-            // setError(`Fallo al eliminar: ${error.message}`);
-        }
-    };
+    // Simulación de Modal de Confirmación
+    const userConfirmation = prompt(
+      `Escribe 'ELIMINAR' para confirmar la eliminación del producto ${id.substring(
+        0,
+        8
+      )}:`
+    );
 
-    if (loading || authLoading) return <div className="text-center py-8">Cargando...</div>;
-    if (error) return <div className="text-center py-8 text-red-600">Error: {error}</div>;
-    if (!isAdmin) return <div className="text-center py-8 text-red-600">Acceso denegado. Debes ser administrador.</div>;
+    if (userConfirmation !== "ELIMINAR") {
+      console.log("Eliminación cancelada por el usuario.");
+      return;
+    }
 
+    if (!user) {
+      console.error("No se pudo obtener el token de usuario.");
+      return;
+    }
 
+    try {
+      const token = await user.getIdToken();
+      const res = await fetch(`/api/admin/products/${id}`, {
+        method: "DELETE",
+        headers: { Authorization: `Bearer ${token}` },
+      });
+
+      if (!res.ok) {
+        const errorData = await res.json();
+        throw new Error(errorData.message || "Error desconocido al eliminar.");
+      }
+
+      // Si la eliminación es exitosa, recarga la lista
+      fetchProducts();
+      console.log(`✅ Producto ${id.substring(0, 8)} eliminado correctamente.`);
+    } catch (error: any) {
+      console.error("❌ Error de eliminación:", error.message);
+      // Mostrar error en la UI (opcional, aquí lo dejamos en consola para evitar alert)
+      // setError(`Fallo al eliminar: ${error.message}`);
+    }
+  };
+
+  if (loading || authLoading)
+    return <div className="text-center py-8">Cargando...</div>;
+  if (error)
+    return <div className="text-center py-8 text-red-600">Error: {error}</div>;
+  if (!isAdmin)
     return (
-         <div className="max-w-7xl mx-auto px-6 md:px-12 py-20 text-foreground">
+      <div className="text-center py-8 text-red-600">
+        Acceso denegado. Debes ser administrador.
+      </div>
+    );
+
+  return (
+    <div className="max-w-7xl mx-auto px-6 md:px-12 py-20 text-foreground">
       <div className="flex justify-between items-center mb-10 border-b border-neutral-800 pb-6">
         <h1 className="text-3xl font-light uppercase tracking-[0.25em]">
           Gestión de Productos
@@ -138,7 +152,9 @@ export default function AdminProductsPage() {
                     {p._id.substring(0, 8)}
                   </td>
                   <td className="px-6 py-4">{p.name}</td>
-                  <td className="px-6 py-4 text-accent">${p.price.toFixed(2)}</td>
+                  <td className="px-6 py-4 text-accent">
+                    ${p.price.toFixed(2)}
+                  </td>
                   <td
                     className={`px-6 py-4 ${
                       p.stock < 10 ? "text-red-500" : "text-green-400"
@@ -167,5 +183,5 @@ export default function AdminProductsPage() {
         </div>
       )}
     </div>
-    );
+  );
 }

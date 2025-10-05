@@ -20,66 +20,58 @@ const handleLogout = async () => {
 };
 
   return (
-    <nav className="bg-white shadow-sm border-b">
-      <div className="container mx-auto flex items-center justify-between px-4 py-4">
-        {/* Logo / Título */}
-        <Link href="/" className="text-xl font-bold text-indigo-600">
-          IV
-        </Link>
+    <nav className="bg-background border-b border-neutral-800">
+  <div className="container mx-auto flex items-center justify-between px-8 py-6">
+    {/* Logo / Título */}
+    <Link href="/" className="text-2xl font-serif tracking-[0.25em] text-foreground hover:text-accent transition">
+      IV
+    </Link>
 
-        {/* Enlaces principales */}
-        <div className="flex gap-6 items-center">
-          <Link href="/" className="hover:text-indigo-600">
-            Inicio
-          </Link>
-          <Link href="/catalog" className="hover:text-indigo-600">
-            Catálogo
-          </Link>
-          <Link href="/cart" className="hover:text-indigo-600 relative">
-            Carrito
-            {totalItems > 0 && (
-              <span className="absolute -top-2 -right-3 bg-indigo-600 text-white text-xs rounded-full px-2 py-0.5">
-                {totalItems}
-              </span>
-            )}
-          </Link>
+    {/* Enlaces principales */}
+    <div className="flex gap-10 items-center text-sm uppercase tracking-wider">
+      <Link href="/" className="hover:text-accent transition">Inicio</Link>
+      <Link href="/catalog" className="hover:text-accent transition">Catálogo</Link>
+      <Link href="/cart" className="relative hover:text-accent transition">
+        Carrito
+        {totalItems > 0 && (
+          <span className="absolute -top-2 -right-4 bg-accent text-white text-xs rounded-full px-2 py-0.5">
+            {totalItems}
+          </span>
+        )}
+      </Link>
 
-          {/* Autenticación */}
-          {user ? (
-            <>
-              <span className="text-gray-600 text-sm">
-                Hola, {userProfile?.nombre || user.email}
-              </span>
+      {/* Autenticación */}
+      {user ? (
+        <>
+          <span className="text-neutral-400 text-xs">
+            Hola, {userProfile?.nombre || user.email}
+          </span>
 
-              {/* ✅ Muestra el link solo si isAdmin es true */}
-              {isAdmin && ( 
-                <Link
-                  href="/admin/products"
-                  className="text-sm bg-indigo-500 text-white px-3 py-1 rounded hover:bg-indigo-600 transition"
-                >
-                  Admin
-                </Link>
-              )}
-
-              <button
-                onClick={handleLogout}
-                className="text-sm bg-red-500 text-white px-3 py-1 rounded hover:bg-red-600 transition"
-              >
-                Cerrar sesión
-              </button>
-            </>
-          ) : (
-            <>
-              <Link href="/login" className="hover:text-indigo-600">
-                Iniciar sesión
-              </Link>
-              <Link href="/register" className="hover:text-indigo-600">
-                Registrarse
-              </Link>
-            </>
+          {isAdmin && (
+            <Link
+              href="/admin/products"
+              className="text-xs bg-accent text-white px-3 py-1 uppercase tracking-wider hover:opacity-80 transition"
+            >
+              Admin
+            </Link>
           )}
-        </div>
-      </div>
-    </nav>
+
+          <button
+            onClick={handleLogout}
+            className="text-xs bg-red-600 text-white px-3 py-1 uppercase tracking-wider hover:bg-red-700 transition"
+          >
+            Cerrar sesión
+          </button>
+        </>
+      ) : (
+        <>
+          <Link href="/login" className="hover:text-accent transition">Iniciar sesión</Link>
+          <Link href="/register" className="hover:text-accent transition">Registrarse</Link>
+        </>
+      )}
+    </div>
+  </div>
+</nav>
+
   );
 }

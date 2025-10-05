@@ -29,32 +29,59 @@ export default function LoginPage() {
   };
 
   return (
-    <div style={styles.container}>
-      <h2 style={styles.title}>Iniciar Sesión</h2>
-      <form onSubmit={handleLogin} style={styles.form}>
-        <input
-          type="email"
-          placeholder="Correo electrónico"
-          value={email}
-          onChange={(e) => setEmail(e.target.value)}
-          required
-          style={styles.input}
-        />
-        <input
-          type="password"
-          placeholder="Contraseña"
-          value={password}
-          onChange={(e) => setPassword(e.target.value)}
-          required
-          style={styles.input}
-        />
+   <div className="min-h-screen flex items-center justify-center bg-background text-foreground px-4">
+      <div className="w-full max-w-md bg-background/60 border border-neutral-800 rounded-2xl shadow-xl p-8 backdrop-blur-sm">
+        <h2 className="text-3xl font-light uppercase tracking-[0.25em] text-center mb-8">
+          Iniciar Sesión
+        </h2>
 
-        {error && <p style={styles.error}>{error}</p>}
+        <form onSubmit={handleLogin} className="space-y-5">
+          <input
+            type="email"
+            placeholder="Correo electrónico"
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            required
+            className="w-full bg-transparent border border-neutral-700 text-sm text-foreground px-4 py-3 rounded-md focus:border-accent focus:outline-none transition"
+          />
+          <input
+            type="password"
+            placeholder="Contraseña"
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+            required
+            className="w-full bg-transparent border border-neutral-700 text-sm text-foreground px-4 py-3 rounded-md focus:border-accent focus:outline-none transition"
+          />
 
-        <button type="submit" style={styles.button} disabled={loading}>
-          {loading ? 'Ingresando...' : 'Ingresar'}
-        </button>
-      </form>
+          {error && (
+            <p className="text-sm font-medium text-red-400 bg-red-950/40 border border-red-700 p-3 rounded-md text-center">
+              {error}
+            </p>
+          )}
+
+          <button
+            type="submit"
+            disabled={loading}
+            className={`w-full py-3 text-sm uppercase tracking-widest rounded-md transition ${
+              loading
+                ? "bg-neutral-700 cursor-not-allowed text-neutral-400"
+                : "bg-accent text-white hover:opacity-80"
+            }`}
+          >
+            {loading ? "Ingresando..." : "Ingresar"}
+          </button>
+        </form>
+
+        <p className="text-center text-xs text-neutral-400 mt-6 tracking-wider">
+          ¿No tienes cuenta?{" "}
+          <a
+            href="/register"
+            className="text-accent hover:opacity-80 transition"
+          >
+            Regístrate aquí
+          </a>
+        </p>
+      </div>
     </div>
   );
 }

@@ -198,144 +198,100 @@ export default function CheckoutPage() {
   };
 
   return (
-    <div className="max-w-2xl mx-auto p-6 bg-white shadow-2xl rounded-xl">
-      <h1 className="text-3xl font-extrabold mb-6 text-gray-800 border-b pb-2">
-        Finalizar Compra
-      </h1>
+    <div className="max-w-3xl mx-auto px-6 py-20 text-foreground">
+      {/* Título */}
+      <h1 className="text-4xl font-light uppercase tracking-[0.25em] text-center mb-16">
+        Finalizar Compra
+      </h1>
 
-      {statusMessage && (
-        <div
-          className={`p-4 mb-5 rounded-lg font-medium ${
-            statusMessage.startsWith("✅")
-              ? "bg-green-100 text-green-700 border border-green-300"
-              : statusMessage.startsWith("⚠️")
-              ? "bg-yellow-100 text-yellow-700 border border-yellow-300"
-              : "bg-red-100 text-red-700 border border-red-300"
-          }`}
-        >
-          {statusMessage}
-        </div>
-      )}
+      {/* Mensajes de estado */}
+      {statusMessage && (
+        <div
+          className={`p-4 mb-8 rounded-xl border text-sm font-medium tracking-wider ${
+            statusMessage.startsWith("✅")
+              ? "bg-green-950/40 text-green-300 border-green-700"
+              : statusMessage.startsWith("⚠️")
+              ? "bg-yellow-900/40 text-yellow-200 border-yellow-700"
+              : "bg-red-950/40 text-red-300 border-red-700"
+          }`}
+        >
+          {statusMessage}
+        </div>
+      )}
 
-      <form onSubmit={handleSubmit} className="space-y-6">
-        <h2 className="text-xl font-semibold text-gray-700">
-          Información de Envío
-        </h2>
+      {/* Formulario */}
+      <form
+        onSubmit={handleSubmit}
+        className="bg-background/60 border border-neutral-800 rounded-2xl shadow-lg px-8 py-10 space-y-6"
+      >
+        <h2 className="text-lg font-light uppercase tracking-widest mb-4 text-neutral-300">
+          Información de Envío
+        </h2>
 
-        {/* Nombre */}
-        <input
-          type="text"
-          name="name"
-          placeholder="Nombre completo"
-          value={form.name}
-          onChange={handleChange}
-          className="w-full p-3 border border-gray-300 rounded-lg"
-          disabled={loading || isAuthenticated}
-          required
-        />
+        {/* Campos */}
+        {["name", "email", "address", "city", "country", "zipCode"].map((field) => (
+          <input
+            key={field}
+            type={field === "email" ? "email" : "text"}
+            name={field}
+            placeholder={
+              field === "name"
+                ? "Nombre completo"
+                : field === "address"
+                ? "Dirección de envío"
+                : field === "zipCode"
+                ? "Código postal"
+                : field.charAt(0).toUpperCase() + field.slice(1)
+            }
+            value={(form as any)[field]}
+            onChange={handleChange}
+            className="w-full bg-transparent border border-neutral-700 text-sm text-foreground px-4 py-3 rounded-md focus:border-accent focus:outline-none transition"
+            disabled={loading || (isAuthenticated && (field === "name" || field === "email"))}
+            required
+          />
+        ))}
 
-        {/* Email */}
-        <input
-          type="email"
-          name="email"
-          placeholder="Correo electrónico"
-          value={form.email}
-          onChange={handleChange}
-          className="w-full p-3 border border-gray-300 rounded-lg"
-          disabled={loading || isAuthenticated}
-          required
-        />
+        {/* Resumen del pedido */}
+        <div className="mt-10 border-t border-neutral-800 pt-8">
+          <h2 className="text-lg font-light uppercase tracking-widest mb-6 text-neutral-300">
+            Resumen del Pedido
+          </h2>
+          {items.length === 0 ? (
+            <p className="text-neutral-500 text-sm italic">Tu carrito está vacío.</p>
+          ) : (
+            <ul className="space-y-3 bg-neutral-900/50 p-4 rounded-xl border border-neutral-800">
+              {items.map((item) => (
+                <li
+                  key={item._id.toString()}
+                  className="flex justify-between text-sm text-neutral-300"
+                >
+                  <span>
+                    {item.name} <span className="text-neutral-500">x {item.quantity}</span>
+                  </span>
+                  <span>${(item.price * item.quantity).toFixed(2)}</span>
+                </li>
+              ))}
+              <li className="flex justify-between text-base font-medium border-t border-neutral-800 pt-3 mt-3">
+                <span>Total</span>
+                <span className="text-accent font-semibold">${total.toFixed(2)}</span>
+              </li>
+            </ul>
+          )}
+        </div>
 
-        {/* Dirección */}
-        <input
-          type="text"
-          name="address"
-          placeholder="Dirección de envío"
-          value={form.address}
-          onChange={handleChange}
-          className="w-full p-3 border border-gray-300 rounded-lg"
-          disabled={loading}
-          required
-        />
-
-        {/* Ciudad */}
-        <input
-          type="text"
-          name="city"
-          placeholder="Ciudad"
-          value={form.city}
-          onChange={handleChange}
-          className="w-full p-3 border border-gray-300 rounded-lg"
-          disabled={loading}
-          required
-        />
-
-        {/* País */}
-        <input
-          type="text"
-          name="country"
-          placeholder="País"
-          value={form.country}
-          onChange={handleChange}
-          className="w-full p-3 border border-gray-300 rounded-lg"
-          disabled={loading}
-          required
-        />
-
-        {/* Código Postal */}
-        <input
-          type="text"
-          name="zipCode"
-          placeholder="Código Postal"
-          value={form.zipCode}
-          onChange={handleChange}
-          className="w-full p-3 border border-gray-300 rounded-lg"
-          disabled={loading}
-          required
-        />
-
-        {/* Resumen */}
-        <div className="mt-8 border-t pt-6">
-          <h2 className="text-xl font-semibold mb-3 text-gray-700">
-            Resumen del Pedido
-          </h2>
-          {items.length === 0 ? (
-            <p className="text-gray-500">Tu carrito está vacío</p>
-          ) : (
-            <ul className="space-y-3 bg-gray-50 p-4 rounded-lg">
-              {items.map((item) => (
-                <li
-                  key={item._id.toString()}
-                  className="flex justify-between text-sm"
-                >
-                  <span className="font-medium text-gray-700">
-                    {item.name} x {item.quantity}
-                  </span>
-                  <span className="font-semibold text-gray-800">
-                    ${(item.price * item.quantity).toFixed(2)}
-                  </span>
-                </li>
-              ))}
-              <li className="flex justify-between font-bold text-lg border-t pt-3 mt-3 text-indigo-600">
-                <span>Total a Pagar</span>
-                <span>${total.toFixed(2)}</span>
-              </li>
-            </ul>
-          )}
-        </div>
-
-        <button
-          type="submit"
-          className={`w-full py-3 px-4 rounded-lg text-white font-bold text-lg transition-colors duration-200 ${
-            loading || items.length === 0
-              ? "bg-gray-400 cursor-not-allowed"
-              : "bg-indigo-600 hover:bg-indigo-700"
-          }`}
-          disabled={loading || items.length === 0}
-        >
-          {loading ? "Procesando..." : "Confirmar y Pagar"}
-        </button>
-      </form>
-    </div>
+        {/* Botón */}
+        <button
+          type="submit"
+          className={`w-full mt-8 py-3 uppercase tracking-[0.2em] text-sm font-medium rounded-md transition ${
+            loading || items.length === 0
+              ? "bg-neutral-700 cursor-not-allowed text-neutral-400"
+              : "bg-accent text-white hover:opacity-80"
+          }`}
+          disabled={loading || items.length === 0}
+        >
+          {loading ? "Procesando..." : "Confirmar y Pagar"}
+        </button>
+      </form>
+    </div>
   );
 }

@@ -27,13 +27,20 @@ export default function AddToCartButton({ product }: { product: CartProduct }) {
 
   const { addToCart } = useCart();
 
+  // Determina si el producto está agotado
+  const isOutOfStock = product.stock <= 0;
+
   return (
-    <button
-      onClick={() => addToCart(productForCart)} // Llama al contexto de carrito
-      className="px-6 py-3 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition"
-      // Aquí puedes añadir lógica para deshabilitar si product.stock es 0
+<button
+      onClick={() => addToCart(productForCart)}
+      disabled={isOutOfStock}
+      className={`px-10 py-3 uppercase tracking-widest text-sm rounded-md transition duration-300 ${
+        isOutOfStock
+          ? "bg-neutral-700 text-neutral-400 cursor-not-allowed"
+          : "bg-accent text-white hover:opacity-80"
+      }`}
     >
-      Agregar al carrito 🛒
+      {isOutOfStock ? "Agotado" : "Agregar al carrito 🛒"}
     </button>
   );
 }

@@ -1,0 +1,124 @@
+@reference "tailwindcss";
+@import "tailwindcss/preflight";
+@import "tailwindcss/utilities";
+
+/* ===========================
+   Variables globales
+=========================== */
+:root {
+  --color-bg: #0a0a0a; /* Negro principal */
+  --color-fg: #ededed; /* Gris claro */
+  --color-accent: #5c3aff; /* Acento violeta */
+}
+
+/* ===========================
+   Base
+=========================== */
+body {
+  background: var(--color-bg);
+  color: var(--color-fg);
+  font-family: "Cormorant Garamond", serif;
+  font-weight: 300;
+  letter-spacing: 0.02em;
+  line-height: 1.6;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* Encabezados elegantes */
+h1,
+h2,
+h3,
+h4 {
+  font-weight: 300;
+  letter-spacing: 0.2em;
+}
+
+/* Enlaces */
+a {
+  color: var(--color-fg);
+  transition: color 0.3s ease;
+}
+a:hover {
+  color: var(--color-accent);
+}
+
+/* Botones */
+button {
+  padding: 0.5rem 1.5rem;
+  background: var(--color-accent);
+  color: white;
+  text-transform: uppercase;
+  letter-spacing: 0.15em;
+  font-size: 0.75rem;
+  transition: opacity 0.3s ease;
+}
+button:hover {
+  opacity: 0.8;
+}
+
+/* Inputs */
+input,
+textarea,
+select {
+  background: transparent;
+  border: 1px solid #404040;
+  color: var(--color-fg);
+  padding: 0.5rem 1rem;
+  outline: none;
+}
+input:focus,
+textarea:focus,
+select:focus {
+  border-color: var(--color-accent);
+}
+
+/* Tarjetas de producto */
+.card {
+  position: relative;
+  overflow: hidden;
+}
+.card img {
+  transition: transform 0.5s ease, opacity 0.5s ease;
+}
+.card:hover img {
+  transform: scale(1.05);
+  opacity: 0.9;
+}
+.card-title {
+  text-align: center;
+  font-size: 0.875rem;
+  margin-top: 0.5rem;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+}
+/* animación de gradiente */
+@keyframes gradientShift {
+  0% {
+    background-position: 0% 50%;
+  }
+  50% {
+    background-position: 100% 50%;
+  }
+  100% {
+    background-position: 0% 50%;
+  }
+}
+
+/* clase para IV metálico */
+.iv-metal {
+  background-image: linear-gradient(
+    90deg,
+    #34204a 0%,
+    #4b1d80 30%,
+    #5c3aff 60%,
+    #9a7bff 100%
+  );
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  background-size: 200% 200%;
+  animation: gradientShift 5s linear infinite;
+  display: inline-block;
+  font-weight: 600;
+}

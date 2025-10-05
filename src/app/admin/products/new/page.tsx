@@ -29,9 +29,11 @@ export default function NewProductPage() {
   }
   
   return (
-    <div className="p-6">
-      <h1 className="text-2xl font-bold mb-4">Crear Nuevo Producto</h1>
-      <ProductForm />
-    </div>
+     <div className="px-6 md:px-12 py-20 text-foreground">
+      <h1 className="text-3xl font-light uppercase tracking-[0.25em] text-center mb-12">
+        Crear Nuevo Producto
+      </h1>
+      <ProductForm />
+    </div>
   );
 }

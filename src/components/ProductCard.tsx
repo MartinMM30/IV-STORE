@@ -22,51 +22,59 @@ export default function ProductCard({ product }: { product: Product }) {
   const imageUrl = product.images?.[0] || '/placeholder-image.jpg'; 
 
   return (
-    <div className="border rounded-xl shadow-lg hover:shadow-xl transition duration-300 transform hover:-translate-y-1 bg-white">
-      <img
-        src={imageUrl} 
-        alt={product.name}
-        className="rounded-t-xl w-full h-32 object-cover object-center"
-      />
-      <div className="p-3 flex flex-col">
-        <h3 className="font-bold text-lg text-gray-800 truncate mb-1">{product.name}</h3>
-        <p className="text-xl font-extrabold text-indigo-600 mt-1 mb-1">${product.price.toFixed(2)}</p> 
-        
-        <p className={`text-sm font-medium ${isOutOfStock ? 'text-red-500' : 'text-green-600'} mb-2`}>
-          {isOutOfStock ? 'Agotado' : `En stock: ${product.stock}`}
-        </p>
+    <div className="group relative bg-background border border-neutral-800 overflow-hidden transition">
+  <img
+    src={imageUrl}
+    alt={product.name}
+    className="w-full h-80 object-cover transition-transform duration-700 group-hover:scale-105 group-hover:opacity-90"
+  />
+  <div className="p-4 text-center">
+    <h3 className="text-sm uppercase tracking-widest text-foreground group-hover:text-accent transition mb-1">
+      {product.name}
+    </h3>
+    <p className="text-xs text-neutral-400 mb-3">
+      ${product.price.toFixed(2)}
+    </p>
 
-        <div className="grid grid-cols-2 gap-3 mt-1">
-          {/* ✅ Lógica de visibilidad del botón de edición para administradores */}
-          {isAdmin ? (
-            <Link
-              href={`/admin/products/${product._id}/edit`} // Link to the admin edit page
-              className="text-center px-2 sm:px-4 py-2 bg-indigo-500 border border-indigo-500 text-white rounded-lg hover:bg-indigo-600 transition text-sm font-medium"
-            >
-              Editar
-            </Link>
-          ) : (
-            <Link
-              href={`/product/${product._id}`} 
-              className="text-center px-2 sm:px-4 py-2 bg-gray-100 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-200 transition text-sm font-medium"
-            >
-              Detalles
-            </Link>
-          )}
+    <p
+      className={`text-xs mb-4 ${
+        isOutOfStock ? "text-red-500" : "text-green-400"
+      }`}
+    >
+      {isOutOfStock ? "Agotado" : `En stock: ${product.stock}`}
+    </p>
 
-          <button
-            onClick={() => addToCart(product)} 
-            disabled={isOutOfStock} 
-            className={`px-2 py-2 rounded-lg font-semibold transition duration-200 text-sm ${
-                isOutOfStock 
-                ? 'bg-gray-400 cursor-not-allowed text-white' // Use a different color for "Agotado"
-                : 'bg-indigo-600 text-white hover:bg-indigo-700'
-            }`}
-          >
-            {isOutOfStock ? 'Agotado' : 'Añadir'}
-          </button>
-        </div>
-      </div>
+    <div className="flex gap-3 justify-center">
+      {isAdmin ? (
+        <Link
+          href={`/admin/products/${product._id}/edit`}
+          className="px-4 py-2 text-xs uppercase tracking-wider bg-accent text-white hover:opacity-80 transition"
+        >
+          Editar
+        </Link>
+      ) : (
+        <Link
+          href={`/product/${product._id}`}
+          className="px-4 py-2 text-xs uppercase tracking-wider border border-neutral-700 text-foreground hover:text-accent transition"
+        >
+          Detalles
+        </Link>
+      )}
+
+      <button
+        onClick={() => addToCart(product)}
+        disabled={isOutOfStock}
+        className={`px-4 py-2 text-xs uppercase tracking-wider transition ${
+          isOutOfStock
+            ? "bg-neutral-700 text-neutral-500 cursor-not-allowed"
+            : "bg-accent text-white hover:opacity-80"
+        }`}
+      >
+        {isOutOfStock ? "Agotado" : "Añadir"}
+      </button>
     </div>
+  </div>
+</div>
+
   );
 }

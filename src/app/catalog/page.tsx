@@ -18,34 +18,30 @@ export default function CatalogPage() {
   }, [refetchProducts]);
 
   return (
-    <div className="p-6">
-      <h2 className="text-3xl font-extrabold mb-8 text-center text-gray-800">
-        Catálogo de Productos
-      </h2>
+    <div className="px-8 py-20">
+  <h2 className="text-4xl font-light uppercase tracking-[0.3em] text-center text-foreground mb-20">
+    Catálogo
+  </h2>
 
-      {loading && (
-        <div className="text-center p-4 my-4 text-gray-500">
-          Cargando catálogo...
-        </div>
-      )}
+  {loading && (
+    <div className="text-center p-6 text-neutral-500">Cargando catálogo...</div>
+  )}
 
-      {!loading && products.length === 0 && (
-        <div className="text-center p-6 my-8 bg-yellow-50 border-l-4 border-yellow-500 text-yellow-800 rounded-md">
-          El catálogo está vacío. Agrega productos en MongoDB Compass o verifica la conexión.
-        </div>
-      )}
-
-      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-8">
-        {products.map((p) => (
-          <ProductCard
-            key={p._id}
-            product={{
-              ...p,
-              description: p.description ?? "",
-            }}
-          />
-        ))}
-      </div>
+  {!loading && products.length === 0 && (
+    <div className="text-center p-8 border border-yellow-500 bg-yellow-950 text-yellow-400 rounded-lg">
+      El catálogo está vacío. Agrega productos en MongoDB o revisa la conexión.
     </div>
+  )}
+
+  <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-16">
+    {products.map((p) => (
+      <ProductCard
+        key={p._id}
+        product={{ ...p, description: p.description ?? "" }}
+      />
+    ))}
+  </div>
+</div>
+
   );
 }

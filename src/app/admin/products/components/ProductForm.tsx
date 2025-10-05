@@ -115,74 +115,66 @@ export default function ProductForm({ productId }: ProductFormProps) {
   }
 
   return (
-    <form onSubmit={handleSubmit} className="flex flex-col gap-4 max-w-lg bg-white p-6 rounded-lg shadow-xl">
-        
-        {/* Mensaje de Error */}
-        {errorMsg && (
-            <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded relative" role="alert">
-                {errorMsg}
-            </div>
-        )}
+   <form
+      onSubmit={handleSubmit}
+      className="flex flex-col gap-5 max-w-xl mx-auto bg-background/60 border border-neutral-800 rounded-2xl p-8 shadow-lg"
+    >
+      {errorMsg && (
+        <p className="text-sm text-red-400 bg-red-950/40 border border-red-700 p-3 rounded-md text-center">
+          {errorMsg}
+        </p>
+      )}
 
+      {["name", "price", "stock", "category"].map((field) => (
         <input
-          type="text"
-          placeholder="Nombre"
-          value={formData.name || ""}
-          onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-          className="border p-3 rounded-lg focus:ring-2 focus:ring-blue-500"
+          key={field}
+          type={field === "price" || field === "stock" ? "number" : "text"}
+          step={field === "price" ? "0.01" : undefined}
+          placeholder={
+            field === "name"
+              ? "Nombre del producto"
+              : field === "price"
+              ? "Precio"
+              : field === "stock"
+              ? "Stock"
+              : "Categoría"
+          }
+          value={(formData as any)[field] ?? ""}
+          onChange={(e) =>
+            setFormData({ ...formData, [field]: e.target.value })
+          }
+          className="w-full bg-transparent border border-neutral-700 text-sm text-foreground px-4 py-3 rounded-md focus:border-accent focus:outline-none transition"
           required
         />
+      ))}
 
-        {/* ✅ CAMBIO CLAVE: Permite decimales (centavos) y asegura la conversión */}
-        <input
-          type="number"
-          step="0.01"
-          placeholder="Precio"
-          value={formData.price ?? ""}
-          onChange={(e) => setFormData({ ...formData, price: Number(e.target.value) })}
-          className="border p-3 rounded-lg focus:ring-2 focus:ring-blue-500"
-          required
-        />
+      <textarea
+        placeholder="Descripción del producto"
+        value={formData.description || ""}
+        onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+        rows={4}
+        className="w-full bg-transparent border border-neutral-700 text-sm text-foreground px-4 py-3 rounded-md focus:border-accent focus:outline-none transition"
+      />
 
-        <input
-          type="number"
-          placeholder="Stock"
-          value={formData.stock ?? ""}
-          onChange={(e) => setFormData({ ...formData, stock: Number(e.target.value) })}
-          className="border p-3 rounded-lg focus:ring-2 focus:ring-blue-500"
-          required
-        />
+      <input
+        type="text"
+        placeholder="URLs de imágenes (separadas por comas)"
+        value={formData.images?.join(",") || ""}
+        onChange={(e) =>
+          setFormData({
+            ...formData,
+            images: e.target.value.split(",").map((url) => url.trim()),
+          })
+        }
+        className="w-full bg-transparent border border-neutral-700 text-sm text-foreground px-4 py-3 rounded-md focus:border-accent focus:outline-none transition"
+      />
 
-        <textarea
-          placeholder="Descripción"
-          value={formData.description || ""}
-          onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-          className="border p-3 rounded-lg focus:ring-2 focus:ring-blue-500"
-          rows={4}
-        />
-        
-        <input
-          type="text"
-          placeholder="URL de Imágenes (separadas por comas)"
-          value={formData.images?.join(",") || ""}
-          onChange={(e) => setFormData({ ...formData, images: e.target.value.split(",").map(url => url.trim()) })}
-          className="border p-3 rounded-lg focus:ring-2 focus:ring-blue-500"
-        />
-
-        <input
-          type="text"
-          placeholder="Categoría"
-          value={formData.category || ""}
-          onChange={(e) => setFormData({ ...formData, category: e.target.value })}
-          className="border p-3 rounded-lg focus:ring-2 focus:ring-blue-500"
-        />
-
-        <button
-          type="submit"
-          className="bg-indigo-600 text-white px-4 py-3 rounded-lg font-semibold hover:bg-indigo-700 transition duration-200"
-        >
-          {productId ? "Guardar Cambios" : "Crear Producto"}
-        </button>
+      <button
+        type="submit"
+        className="w-full py-3 bg-accent text-white text-sm uppercase tracking-widest rounded-md hover:opacity-80 transition"
+      >
+        {productId ? "Guardar Cambios" : "Crear Producto"}
+      </button>
     </form>
   );
 }

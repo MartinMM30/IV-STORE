@@ -61,26 +61,48 @@ export default async function ProductPage({ params }: ProductPageProps) {
   const mainImage = product.images?.[0] || 'https://via.placeholder.com/500';
 
   return (
-    <div className="grid md:grid-cols-2 gap-8">
-      <img
-        src={mainImage} // Usamos la imagen de MongoDB
-        alt={product.name}
-        className="rounded-lg shadow-lg"
-      />
-      <div>
-        <h1 className="text-3xl font-bold mb-2">{product.name}</h1>
-        <p className="text-gray-600 mb-4">{product.description}</p>
-        <p className="text-xl font-semibold mb-6">${product.price.toFixed(2)}</p>
-        
-        {/* Mostramos el stock */}
-        <p className={`mb-4 font-medium ${product.stock > 0 ? 'text-green-600' : 'text-red-500'}`}>
-            Stock: {product.stock > 0 ? `${product.stock} unidades` : 'Agotado'}
-        </p>
+     <section className="max-w-6xl mx-auto px-6 md:px-12 py-24 text-foreground">
+      <div className="grid md:grid-cols-2 gap-16 items-start">
+        {/* Imagen del producto */}
+        <div className="relative overflow-hidden rounded-2xl border border-neutral-800 bg-neutral-950/40">
+          <img
+            src={mainImage}
+            alt={product.name}
+            className="w-full h-[600px] object-cover transition-transform duration-700 hover:scale-105"
+          />
+        </div>
 
-        {/* 2. COMPONENTE CLIENTE SEPARADO */}
-        {/* Aquí pasamos el producto al componente que usa el Contexto de Cliente */}
-        <AddToCartButton product={product} /> 
+        {/* Detalles del producto */}
+        <div className="space-y-6">
+          <h1 className="text-4xl font-light uppercase tracking-[0.25em]">
+            {product.name}
+          </h1>
+
+          <p className="text-neutral-400 leading-relaxed">
+            {product.description}
+          </p>
+
+          <p className="text-2xl font-medium text-accent tracking-wide">
+            ${product.price.toFixed(2)}
+          </p>
+
+          <p
+            className={`text-sm tracking-wider uppercase ${
+              product.stock > 0
+                ? "text-green-400"
+                : "text-red-500"
+            }`}
+          >
+            {product.stock > 0
+              ? `En stock: ${product.stock} unidades`
+              : "Agotado"}
+          </p>
+
+          <div className="pt-6">
+            <AddToCartButton product={product} />
+          </div>
+        </div>
       </div>
-    </div>
+    </section>
   );
 }

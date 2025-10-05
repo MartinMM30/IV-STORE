@@ -99,64 +99,73 @@ export default function AdminProductsPage() {
 
 
     return (
-        <div className="max-w-7xl mx-auto p-4 sm:p-6 lg:p-8">
-            <div className="flex justify-between items-center mb-6 border-b pb-4">
-                <h1 className="text-3xl font-extrabold text-gray-900">
-                    Gestión de Productos
-                </h1>
-                <Link 
-                    href="/admin/products/new" 
-                    className="bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2 px-4 rounded-lg shadow-md transition duration-200"
+         <div className="max-w-7xl mx-auto px-6 md:px-12 py-20 text-foreground">
+      <div className="flex justify-between items-center mb-10 border-b border-neutral-800 pb-6">
+        <h1 className="text-3xl font-light uppercase tracking-[0.25em]">
+          Gestión de Productos
+        </h1>
+        <Link
+          href="/admin/products/new"
+          className="px-6 py-2 bg-accent text-white text-sm uppercase tracking-widest rounded-md hover:opacity-80 transition"
+        >
+          + Nuevo
+        </Link>
+      </div>
+
+      {products.length === 0 ? (
+        <p className="text-center text-neutral-400 italic">
+          No hay productos registrados.
+        </p>
+      ) : (
+        <div className="overflow-x-auto border border-neutral-800 rounded-2xl bg-background/60">
+          <table className="min-w-full divide-y divide-neutral-800 text-sm">
+            <thead className="bg-neutral-900/60 text-neutral-300 uppercase tracking-widest text-xs">
+              <tr>
+                <th className="px-6 py-3 text-left">ID</th>
+                <th className="px-6 py-3 text-left">Nombre</th>
+                <th className="px-6 py-3 text-left">Precio</th>
+                <th className="px-6 py-3 text-left">Stock</th>
+                <th className="px-6 py-3 text-left">Acciones</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-neutral-800">
+              {products.map((p) => (
+                <tr
+                  key={p._id}
+                  className="hover:bg-neutral-900/60 transition duration-150"
                 >
-                    + Agregar Producto
-                </Link>
-            </div>
-            
-            {products.length === 0 ? (
-                <p className="mt-4 text-gray-500">No hay productos en el sistema.</p>
-            ) : (
-                <div className="overflow-x-auto shadow-xl rounded-xl bg-white">
-                    <table className="min-w-full divide-y divide-gray-200">
-                        <thead className="bg-indigo-600 text-white">
-                            <tr>
-                                <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider">ID (8 dig.)</th>
-                                <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider">Nombre</th>
-                                <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider">Precio</th>
-                                <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider">Stock</th>
-                                <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider">Acciones</th>
-                            </tr>
-                        </thead>
-                        <tbody className="bg-white divide-y divide-gray-200">
-                            {products.map((p) => (
-                                <tr key={p._id} className="hover:bg-gray-50 transition duration-150">
-                                    <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
-                                        {p._id.substring(0, 8)}
-                                    </td>
-                                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{p.name}</td>
-                                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">${p.price.toFixed(2)}</td>
-                                    <td className="px-6 py-4 whitespace-nowrap text-sm font-bold" style={{ color: p.stock < 10 ? 'red' : 'green' }}>
-                                        {p.stock}
-                                    </td>
-                                    <td className="px-6 py-4 whitespace-nowrap text-sm font-medium space-x-2">
-                                        <Link
-                                            href={`/admin/products/${p._id}/edit`}
-                                            className="text-indigo-600 hover:text-indigo-900 transition font-semibold"
-                                        >
-                                            Editar
-                                        </Link>
-                                        <button
-                                            onClick={() => handleDelete(p._id)}
-                                            className="text-red-600 hover:text-red-900 transition font-semibold"
-                                        >
-                                            Eliminar
-                                        </button>
-                                    </td>
-                                </tr>
-                            ))}
-                        </tbody>
-                    </table>
-                </div>
-            )}
+                  <td className="px-6 py-4 text-neutral-400 font-mono">
+                    {p._id.substring(0, 8)}
+                  </td>
+                  <td className="px-6 py-4">{p.name}</td>
+                  <td className="px-6 py-4 text-accent">${p.price.toFixed(2)}</td>
+                  <td
+                    className={`px-6 py-4 ${
+                      p.stock < 10 ? "text-red-500" : "text-green-400"
+                    }`}
+                  >
+                    {p.stock}
+                  </td>
+                  <td className="px-6 py-4 space-x-4">
+                    <Link
+                      href={`/admin/products/${p._id}/edit`}
+                      className="text-accent hover:opacity-80 uppercase text-xs tracking-widest"
+                    >
+                      Editar
+                    </Link>
+                    <button
+                      onClick={() => console.log("Eliminar producto", p._id)}
+                      className="text-red-500 hover:text-red-600 uppercase text-xs tracking-widest"
+                    >
+                      Eliminar
+                    </button>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
         </div>
+      )}
+    </div>
     );
 }

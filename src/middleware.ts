@@ -5,22 +5,25 @@ import type { NextRequest } from "next/server";
 export async function middleware(req: NextRequest) {
   const url = req.nextUrl.pathname;
 
-  // Solo aplicamos el middleware a rutas /admin/*
+  // Solo proteger rutas administrativas
   if (url.startsWith("/admin")) {
     const token = req.cookies.get("token")?.value;
-    
-    // Si no hay token, redirigir al login.
-    // La verificación real del token ocurre en la API
+
+    // 🔍 Log para depurar en Vercel (Runtime Logs)
+    console.log("🔍 Cookies en request:", req.cookies.getAll());
+
     if (!token) {
+      console.warn("🚫 No se encontró token, redirigiendo al login");
       return NextResponse.redirect(new URL("/login", req.url));
     }
+
+    // ✅ Token presente → dejar continuar
   }
 
-  // Para todo lo demás, continuar normalmente
   return NextResponse.next();
 }
 
-// Configuración para qué rutas aplica el middleware
+// Configuración: aplica solo a rutas /admin/*
 export const config = {
   matcher: ["/admin/:path*"],
 };

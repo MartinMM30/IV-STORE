@@ -1,4 +1,4 @@
-// app/api/admin/products/[productId]/route.ts
+// ✅ versión corregida
 import { NextResponse } from "next/server";
 import { connectMongoose } from "@/lib/mongooseClient";
 import { Product } from "@/models/Product";
@@ -18,10 +18,10 @@ export async function GET(
       { status: authCheck.status }
     );
   }
+
   try {
-    const awaitedParams = await params;
     await connectMongoose();
-    const product = await Product.findById(awaitedParams.productId);
+    const product = await Product.findById(params.productId);
     if (!product) {
       return NextResponse.json(
         { message: "Producto no encontrado" },
@@ -50,14 +50,17 @@ export async function PUT(
       { status: authCheck.status }
     );
   }
+
   try {
     const body = await req.json();
-    const awaitedParams = await params;
     await connectMongoose();
     const updatedProduct = await Product.findByIdAndUpdate(
       params.productId,
       body,
-      { new: true, runValidators: true }
+      {
+        new: true,
+        runValidators: true,
+      }
     );
     if (!updatedProduct) {
       return NextResponse.json(
@@ -90,9 +93,9 @@ export async function DELETE(
       { status: authCheck.status }
     );
   }
+
   try {
     await connectMongoose();
-    const awaitedParams = await params;
     const deleted = await Product.findByIdAndDelete(params.productId);
     if (!deleted) {
       return NextResponse.json(

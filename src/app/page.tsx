@@ -66,7 +66,7 @@ export default function HomePage() {
   }, []);
 
   return (
-    <main className="flex items-center justify-center min-h-screen bg-[var(--color-bg)] text-[var(--color-fg)] px-6 overflow-hidden">
+    <main className="flex items-center justify-center min-h-screen bg-[var(--color-bg)] text-[var(--color-fg)] px-4 sm:px-6 overflow-hidden">
       <div className="text-center relative">
         <motion.div
           className="halo-ripple"

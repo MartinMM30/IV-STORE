@@ -48,7 +48,7 @@ export default async function ProductPage({ params }: ProductPageProps) {
           <img
             src={mainImage}
             alt={product.name}
-            className="w-full h-[600px] object-cover transition-transform duration-700 hover:scale-105"
+            className="w-full h-[70vh] md:h-[600px] object-cover transition-transform duration-700 hover:scale-105"
           />
         </div>
 

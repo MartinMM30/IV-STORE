@@ -123,3 +123,40 @@
     transform: translateY(0);
   }
 }
+
+@media (max-width: 768px) {
+  /* Hacemos el slime más pequeño y discreto en móviles */
+  .slimeClickWrapper {
+    width: 70px;
+    height: 70px;
+  }
+
+  /* El chat ahora ocupa casi todo el ancho y se posiciona en el centro */
+  .chatContainer {
+    width: 90vw; /* Ocupa el 90% del ancho de la pantalla */
+    height: 75vh; /* Ocupa el 75% de la altura de la pantalla */
+    max-width: 400px; /* Un límite para que no se estire demasiado en tablets */
+
+    /* Lo centramos horizontalmente y lo pegamos a la parte de abajo */
+    bottom: 10px;
+    left: 50%;
+    transform: translateX(-50%);
+
+    /* Eliminamos el 'right' fijo que causaba el problema */
+    right: auto;
+  }
+
+  /* Ajustamos un poco los textos y el padding del chat para móviles */
+  .userInput {
+    font-size: 14px;
+    padding: 8px 12px;
+  }
+
+  .sendButton {
+    padding: 8px 15px;
+  }
+
+  .message {
+    font-size: 14px;
+  }
+}

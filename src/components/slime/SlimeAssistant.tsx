@@ -9,7 +9,6 @@ import styles from "./SlimeAssistant.module.css";
 gsap.registerPlugin(MotionPathPlugin);
 
 const SlimeAssistant = () => {
-  // --- 1. REFERENCIAS Y ESTADO ---
   const slimeContainerRef = useRef<HTMLDivElement>(null);
   const slimeCharacterRef = useRef<SVGGElement>(null);
   const eyesNeutralRef = useRef<SVGGElement>(null);
@@ -26,7 +25,6 @@ const SlimeAssistant = () => {
   );
   const [isChatOpen, setIsChatOpen] = useState(false);
 
-  // --- 2. LÓGICA DE ANIMACIÓN, MOVIMIENTO E INTERACCIÓN ---
   useGSAP(
     () => {
       const allEyes = [
@@ -35,15 +33,23 @@ const SlimeAssistant = () => {
         eyesSadRef.current,
         eyesSuggestRef.current,
       ];
-      let homeX = window.innerWidth - 120;
-      let homeY = window.innerHeight - 120;
+
+      // ✅ CORRECCIÓN: Asignamos el valor inicial al momento de declarar
+      let homeX = window.innerWidth - (window.innerWidth <= 768 ? 70 : 120);
+      let homeY = window.innerHeight - (window.innerHeight <= 768 ? 70 : 120);
+
       let inactivityTimer: NodeJS.Timeout;
       let roamingTimer: NodeJS.Timeout | null = null;
 
-      window.addEventListener("resize", () => {
-        homeX = window.innerWidth - 120;
-        homeY = window.innerHeight - 120;
-      });
+      // La función 'resize' ahora solo actualiza estas variables
+      const handleResize = () => {
+        const isMobile = window.innerWidth <= 768;
+        const offset = isMobile ? 70 : 120;
+        homeX = window.innerWidth - offset;
+        homeY = window.innerHeight - offset;
+      };
+
+      window.addEventListener("resize", handleResize);
 
       function startBreathing() {
         if (!slimeCharacterRef.current) return;
@@ -147,8 +153,11 @@ const SlimeAssistant = () => {
       function startRoaming() {
         if (roamingTimer) return;
         roamingTimer = setInterval(() => {
-          const randomX = Math.random() * (window.innerWidth - 100);
-          const randomY = Math.random() * (window.innerHeight - 100);
+          const isMobile = window.innerWidth <= 768;
+          const roamOffset = isMobile ? 60 : 100;
+
+          const randomX = Math.random() * (window.innerWidth - roamOffset);
+          const randomY = Math.random() * (window.innerHeight - roamOffset);
           bouncingJump(randomX, randomY);
         }, 10000);
       }
@@ -170,6 +179,10 @@ const SlimeAssistant = () => {
       gsap.set(slimeContainerRef.current, { x: homeX, y: homeY });
       startBreathing();
       resetInactivityTimer();
+
+      return () => {
+        window.removeEventListener("resize", handleResize);
+      };
     },
     { scope: slimeContainerRef }
   );
@@ -187,7 +200,7 @@ const SlimeAssistant = () => {
       const rect = target.getBoundingClientRect();
       const targetX = rect.left + rect.width / 2 - 50;
       const targetY = rect.top - 100;
-      const mensaje = `¡Hey! Veo que te interesa el producto "${nombreProducto}". ¿Te gustaría ver más detalles?`;
+      const mensaje = `¡Hey! Veo que te interesa "${nombreProducto}". ¿Quieres saber más?`;
 
       (window as any).slimeFunctions?.bouncingJump(targetX, targetY);
       (window as any).slimeFunctions?.setExpression(eyesSuggestRef);
@@ -245,14 +258,10 @@ const SlimeAssistant = () => {
       }
 
       const data = await response.json();
-
-      // --- ¡AQUÍ ESTÁ LA CORRECCIÓN! ---
-      // Navegamos la nueva estructura de respuesta del webhook para encontrar el texto
       const reply =
         data.fulfillment_response?.messages[0]?.text?.text[0] ||
         "No entendí, ¿puedes repetirlo?";
 
-      // Actualizamos la sesión con la que nos devuelve el backend
       setSessionId(data.session_info?.session || sessionId);
       addMessageToChat(reply, "assistant");
       (window as any).slimeFunctions?.setExpression(eyesHappyRef);

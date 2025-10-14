@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/context/AuthContext";
+import Link from "next/link";
 
 export default function LoginPage() {
   const { signIn } = useAuth();
@@ -70,7 +71,14 @@ export default function LoginPage() {
             {loading ? "Ingresando..." : "Ingresar"}
           </button>
         </form>
-
+        <div className="text-center mt-4">
+          <Link
+            href="/forgot-password"
+            className="text-xs text-neutral-400 tracking-wider hover:text-accent transition"
+          >
+            ¿Olvidaste tu contraseña?
+          </Link>
+        </div>
         <p className="text-center text-xs text-neutral-400 mt-6 tracking-wider">
           ¿No tienes cuenta?{" "}
           <a

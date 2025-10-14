@@ -1,24 +1,44 @@
 "use client";
 
 import { useCart } from "@/context/CartContext";
-import Link from "next/link"; // 👈 asegúrate de importarlo
+import Link from "next/link";
 
 export default function CartPage() {
   const { cart, removeFromCart, updateQuantity, clearCart } = useCart();
 
   const total = cart.reduce((sum, p) => sum + p.price * p.quantity, 0);
 
+  //  función para manejar cambios en la cantidad
+
+  const handleQuantityChange = (itemId: string, newQuantity: string) => {
+    if (newQuantity === "" || isNaN(Number(newQuantity))) {
+      return;
+    }
+
+    const quantityAsInteger = Math.floor(Number(newQuantity));
+    const finalQuantity = Math.max(1, quantityAsInteger); // Asegura que nunca sea menor que 1
+
+    updateQuantity(itemId, finalQuantity);
+  };
+
   if (cart.length === 0)
-    return <p className="text-center">Tu carrito está vacío 🛒</p>;
+    return (
+      <div className="text-center py-20">
+        <p className="text-neutral-400">Tu carrito está vacío 🛒</p>
+        <Link
+          href="/catalog"
+          className="mt-6 inline-block px-8 py-2 bg-accent text-white text-sm uppercase tracking-widest hover:opacity-80 transition"
+        >
+          Ir al Catálogo
+        </Link>
+      </div>
+    );
 
   return (
-  <div className="px-6 md:px-12 py-20 text-foreground">
-      {/* Título */}
+    <div className="max-w-4xl mx-auto px-4 sm:px-6 md:px-12 py-20 text-foreground">
       <h1 className="text-4xl font-light uppercase tracking-[0.25em] text-center mb-16">
         Tu Carrito
       </h1>
-
-      {/* Items */}
       <div className="space-y-8">
         {cart.map((item) => (
           <div
@@ -27,12 +47,18 @@ export default function CartPage() {
           >
             <div className="flex items-center gap-6 w-full sm:w-auto">
               <img
-                src={Array.isArray(item.images) ? item.images[0] : item.images}
+                src={
+                  Array.isArray(item.images)
+                    ? item.images[0]
+                    : "/placeholder-image.jpg"
+                }
                 alt={item.name}
                 className="w-24 h-24 object-cover rounded-xl"
               />
               <div>
-                <h2 className="text-lg font-light tracking-wider">{item.name}</h2>
+                <h2 className="text-lg font-light tracking-wider">
+                  {item.name}
+                </h2>
                 <p className="text-neutral-400 text-sm mt-1">
                   ${item.price.toFixed(2)}
                 </p>
@@ -44,16 +70,16 @@ export default function CartPage() {
                 type="number"
                 value={item.quantity}
                 min={1}
+                step="1" // Ayuda a que los botones de incremento/decremento vayan de 1 en 1
                 className="w-16 bg-transparent border border-neutral-700 text-center py-1 rounded-md text-sm text-foreground focus:border-accent outline-none"
-                onChange={(e) =>
-                  updateQuantity(item._id, Number(e.target.value))
-                }
+                // Llamamos a nuestra nueva función de manejo
+                onChange={(e) => handleQuantityChange(item._id, e.target.value)}
                 title="Cantidad"
                 placeholder="Cantidad"
               />
               <button
                 onClick={() => removeFromCart(item._id)}
-                className="px-3 py-1 bg-red-600 text-white rounded-md hover:bg-red-700 transition text-xs uppercase tracking-widest"
+                className="px-3 py-1 bg-red-800/50 text-red-300 border border-red-800 rounded-md hover:bg-red-700 hover:text-white transition text-xs uppercase tracking-widest"
               >
                 X
               </button>
@@ -62,10 +88,10 @@ export default function CartPage() {
         ))}
       </div>
 
-      {/* Total y acciones */}
       <div className="mt-16 flex flex-col sm:flex-row justify-between items-center gap-6 border-t border-neutral-800 pt-10">
         <p className="text-xl font-light tracking-wider">
-          Total: <span className="text-accent font-medium">${total.toFixed(2)}</span>
+          Total:{" "}
+          <span className="text-accent font-medium">${total.toFixed(2)}</span>
         </p>
 
         <div className="flex gap-4">
@@ -75,7 +101,6 @@ export default function CartPage() {
           >
             Vaciar Carrito
           </button>
-
           <Link
             href="/checkout"
             className="px-8 py-2 bg-accent text-white text-sm uppercase tracking-widest hover:opacity-80 transition"

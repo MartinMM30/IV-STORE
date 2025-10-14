@@ -1,24 +1,26 @@
-import { initializeApp } from 'firebase/app';
-import { getAuth } from 'firebase/auth';
-import { getAnalytics, isSupported } from 'firebase/analytics';
+// src/lib/firebase.ts
+import { initializeApp, getApps } from "firebase/app";
+import { getAuth } from "firebase/auth";
+import { getAnalytics, isSupported } from "firebase/analytics";
 
+// ✅ Ahora la configuración se lee de forma segura desde las variables de entorno
 const firebaseConfig = {
-  apiKey: 'AIzaSyAmg8oKTfIT56_F7yELRZAoyZMq-MqRl6E',
-  authDomain: 'iv-design-c13bc.firebaseapp.com',
-  projectId: 'iv-design-c13bc',
-  storageBucket: 'iv-design-c13bc.appspot.com',
-  messagingSenderId: '654972044837',
-  appId: '1:654972044837:web:fe6725365c57374cd8e1cc',
-  measurementId: 'G-1HXR7VR9LV',
+  apiKey: process.env.NEXT_PUBLIC_FIREBASE_API_KEY,
+  authDomain: process.env.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN,
+  projectId: process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID,
+  storageBucket: process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET,
+  messagingSenderId: process.env.NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID,
+  appId: process.env.NEXT_PUBLIC_FIREBASE_APP_ID,
+  measurementId: process.env.NEXT_PUBLIC_FIREBASE_MEASUREMENT_ID,
 };
 
-const app = initializeApp(firebaseConfig);
+// Evita que Firebase se reinicialice en cada recarga en desarrollo
+const app = !getApps().length ? initializeApp(firebaseConfig) : getApps()[0];
 const auth = getAuth(app);
 
 let analytics: ReturnType<typeof getAnalytics> | null = null;
 
-if (typeof window !== 'undefined') {
-  // Solo intenta cargar analytics si estamos en el navegador
+if (typeof window !== "undefined") {
   isSupported().then((yes) => {
     if (yes) {
       analytics = getAnalytics(app);

@@ -251,3 +251,8 @@ div[hidden] {
     transform: translateY(-50%) scale(1);
   }
 }
+.halo-container {
+  /* Usamos la variable que React nos pasa. 
+     El segundo valor (400px) es un fallback por si la variable no existe. */
+  height: var(--halo-height, 400px);
+}

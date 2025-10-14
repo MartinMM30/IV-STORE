@@ -31,16 +31,11 @@ export default function HomePage() {
     const calculateHaloSize = () => {
       if (textContainerRef.current) {
         const width = textContainerRef.current.clientWidth;
-
-        // ✅ SOLUCIÓN 1: Limitamos el tamaño del halo
-        // Ahora será el 60% del ancho del texto, con un mínimo de 200px y un MÁXIMO de 550px.
         const size = Math.min(550, Math.max(200, width * 0.6));
-
         setHaloStyle({
           width: size,
           height: size,
         });
-
         setTimeout(() => setIsHaloVisible(true), fullText.length * 60);
       }
     };
@@ -52,17 +47,20 @@ export default function HomePage() {
       clearTimeout(timer);
       window.removeEventListener("resize", calculateHaloSize);
     };
-  }, []);
+  }, [fullText.length]); // Añadimos fullText.length a las dependencias por buena práctica
 
   return (
-    // El <main> sigue siendo el encargado de centrar todo
     <main className="flex items-center justify-center min-h-screen bg-[var(--color-bg)] text-[var(--color-fg)] px-4 sm:px-6 overflow-hidden">
-      {/* ✅ SOLUCIÓN 2: Un único contenedor para todo el contenido */}
-      <div className="flex flex-col items-center text-center">
-        {/* Contenedor relativo para el H1 y su Halo */}
-        <div className="relative flex justify-center items-center">
+      {/* Contenedor principal que se centra verticalmente */}
+      <div className="flex flex-col items-center text-center transform -translate-y-12 md:-translate-y-16">
+        {/* Contenedor para H1 y Halo, CON ALTURA DINÁMICA */}
+        <div
+          className="relative flex justify-center items-center"
+          // ✅ CLAVE #1: Se le da una altura dinámica igual a la del círculo, creando un espacio "real"
+          style={{ height: haloStyle.height }}
+        >
           <motion.div
-            className="halo-ripple absolute" // Quitamos las clases de posicionamiento de aquí
+            className="halo-ripple absolute"
             style={haloStyle}
             initial={{ opacity: 0, scale: 0.8 }}
             animate={{
@@ -71,7 +69,6 @@ export default function HomePage() {
             }}
             transition={{ duration: 1, ease: [0.25, 0.1, 0.25, 1] }}
           />
-
           <motion.h1
             ref={textContainerRef}
             variants={container}
@@ -99,7 +96,7 @@ export default function HomePage() {
           </motion.h1>
         </div>
 
-        {/* El subtítulo y el botón ahora son parte del flujo normal del documento */}
+        {/* Subtítulo y botón, AHORA SIN POSICIONAMIENTO ABSOLUTO */}
         <motion.p
           initial={{ opacity: 0, y: 10 }}
           animate={{ opacity: 1, y: 0 }}
@@ -108,7 +105,8 @@ export default function HomePage() {
             duration: 0.6,
             ease: [0.25, 0.1, 0.25, 1],
           }}
-          className="mt-6 text-sm text-neutral-400 tracking-wider relative z-10"
+          // ✅ CLAVE #2: Sin 'absolute'. Ahora sigue el flujo normal del documento. Margen ajustado.
+          className="mt-4 text-sm text-neutral-400 tracking-wider z-10"
         >
           Diseño. Estilo. Precisión.
         </motion.p>
@@ -121,7 +119,8 @@ export default function HomePage() {
             duration: 0.6,
             ease: [0.25, 0.1, 0.25, 1],
           }}
-          className="mt-8 relative z-10"
+          // ✅ CLAVE #2: Sin 'absolute'. Margen ajustado.
+          className="mt-6 z-10"
         >
           <a
             href="/catalog"

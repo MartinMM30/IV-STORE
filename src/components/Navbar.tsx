@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react"; // Importa useState
+import { useState } from "react";
 import Link from "next/link";
 import { useCart } from "@/context/CartContext";
 import { useAuth } from "@/context/AuthContext";
@@ -10,33 +10,47 @@ export default function Navbar() {
   const { user, userProfile, logout, isAdmin } = useAuth();
   const totalItems = cart.reduce((sum, item) => sum + item.quantity, 0);
 
-  // Estado para controlar si el menú móvil está abierto o cerrado
   const [isMenuOpen, setIsMenuOpen] = useState(false);
 
   const handleLogout = async () => {
     try {
       await logout();
-      setIsMenuOpen(false); // Cierra el menú al desloguearse
+      setIsMenuOpen(false);
     } catch (error) {
       console.error("Error al cerrar sesión:", error);
     }
   };
 
   return (
-    <nav className="borde sticky top-0 z-50 backdrop-blur-sm bg-background/80">
+    <nav className="sticky top-0 z-50 backdrop-blur-sm bg-background/80 border-b border-neutral-800/50 shadow-[0_4px_15px_-5px_rgba(138,43,226,0.5)]">
       <div className="container mx-auto flex items-center justify-between px-4 sm:px-8 py-6">
-        {/* Logo / Título */}
+        {/* ✅ REQUERIMIENTO 2 Y 3 (CORREGIDO): Logo "escalera" y halo parcial sin cortar texto */}
         <Link
           href="/"
-          className="text-2xl font-serif tracking-[0.25em] text-foreground hover:text-accent transition moradito"
-          onClick={() => setIsMenuOpen(false)} // Cierra el menú al ir al inicio
+          className="font-serif text-foreground"
+          onClick={() => setIsMenuOpen(false)}
         >
-          AURI'S CLOSET
+          <div className="flex flex-col -space-y-2">
+            {/* Contenedor relativo para "AURI'S" y su halo */}
+            <div className="relative">
+              {/* El texto "AURI'S" siempre visible */}
+              <span className="text-2xl tracking-[0.25em] moradito transition-colors duration-300 hover:text-accent">
+                AURI'S
+              </span>
+
+              {/* El elemento del halo (ya no necesita un "clipper") */}
+              <div className="auris-halo-ring"></div>
+            </div>
+
+            {/* "CLOSET" alineado a la derecha */}
+            <span className="text-sm tracking-[0.3em] text-neutral-400 self-end">
+              CLOSET
+            </span>
+          </div>
         </Link>
 
-        {/* --- Menú de Escritorio (visible en pantallas medianas y grandes) --- */}
+        {/* --- Menú de Escritorio --- */}
         <div className="hidden md:flex gap-10 items-center text-sm uppercase tracking-wider moradito">
-          {/* Reutilizamos los enlaces en un componente para no repetir código, pero por simplicidad los dejamos aquí */}
           <Link href="/" className="hover:text-accent transition">
             Inicio
           </Link>
@@ -80,13 +94,12 @@ export default function Navbar() {
           )}
         </div>
 
-        {/* --- Botón de Hamburguesa (visible solo en móvil) --- */}
+        {/* --- Botón de Hamburguesa --- */}
         <div className="md:hidden">
           <button
             onClick={() => setIsMenuOpen(!isMenuOpen)}
             aria-label="Toggle menu"
           >
-            {/* Ícono de hamburguesa o X de cierre */}
             <svg
               xmlns="http://www.w3.org/2000/svg"
               className="h-6 w-6"
@@ -118,7 +131,7 @@ export default function Navbar() {
       {isMenuOpen && (
         <div className="md:hidden bg-background border-t border-neutral-800">
           <div className="flex flex-col items-center gap-6 py-8 text-sm uppercase tracking-wider moradito">
-            {/* Los mismos enlaces, pero ahora en vertical */}
+            {/* ... Menú móvil sin cambios ... */}
             <Link
               href="/"
               onClick={() => setIsMenuOpen(false)}

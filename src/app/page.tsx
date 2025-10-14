@@ -1,10 +1,18 @@
 "use client";
 
 import { motion, Variants } from "framer-motion";
+import { useRef, useState, useEffect } from "react";
 
 export default function HomePage() {
-  const text = "Bienvenido a IV";
-  const letters = Array.from(text);
+  const text1 = "welcome to";
+  const text2 = "MY CLOSET";
+  const letters = Array.from(text1 + " " + text2);
+
+  const o1Ref = useRef<HTMLSpanElement>(null);
+  const o2Ref = useRef<HTMLSpanElement>(null);
+
+  const [haloStyle, setHaloStyle] = useState({});
+  const [isHaloVisible, setIsHaloVisible] = useState(false);
 
   const container: Variants = {
     hidden: {},
@@ -21,22 +29,85 @@ export default function HomePage() {
     },
   };
 
+  useEffect(() => {
+    const calculateHaloPosition = () => {
+      if (o1Ref.current && o2Ref.current) {
+        const rect1 = o1Ref.current.getBoundingClientRect();
+        const rect2 = o2Ref.current.getBoundingClientRect();
+        const containerRect =
+          o1Ref.current.parentElement?.getBoundingClientRect();
+
+        if (!containerRect) return;
+
+        const left = rect1.left - containerRect.left + rect1.width / 2;
+        const top = rect1.top - containerRect.top + rect1.height / 2;
+        const width = rect2.right - rect1.left;
+
+        const height = width;
+
+        setHaloStyle({
+          top: top - height / 2,
+          left: left - rect1.width / 2,
+          width: `${width}px`,
+          height: `${height}px`,
+        });
+
+        setTimeout(() => setIsHaloVisible(true), 500);
+      }
+    };
+
+    calculateHaloPosition();
+    window.addEventListener("resize", calculateHaloPosition);
+
+    return () => window.removeEventListener("resize", calculateHaloPosition);
+
+    // --- ¡AQUÍ ESTÁ LA CORRECCIÓN! ---
+    // Cambiamos [letters] por un array vacío [] para que el efecto se ejecute solo una vez.
+  }, []);
+
   return (
-    <main className="flex items-center justify-center min-h-screen bg-[var(--color-bg)] text-[var(--color-fg)] px-6">
-      <div className="text-center">
+    <main className="flex items-center justify-center min-h-screen bg-[var(--color-bg)] text-[var(--color-fg)] px-6 overflow-hidden">
+      <div className="text-center relative">
+        <motion.div
+          className="halo-ripple"
+          style={haloStyle}
+          initial={{ opacity: 0, scale: 0.8 }}
+          animate={{
+            opacity: isHaloVisible ? 1 : 0,
+            scale: isHaloVisible ? 1 : 0.8,
+          }}
+          transition={{ duration: 1, ease: [0.25, 0.1, 0.25, 1] }}
+        />
+
         <motion.h1
           variants={container}
           initial="hidden"
           animate="show"
-          className="text-4xl sm:text-6xl md:text-7xl font-light tracking-[0.25em] uppercase"
+          className="text-4xl sm:text-6xl md:text-7xl font-light tracking-[0.25em] uppercase relative z-10"
         >
           {letters.map((char, i) => {
-            const isIV = char === "I" || char === "V";
+            const isIVY =
+              char === "M" ||
+              char === "Y" ||
+              char === "C" ||
+              char === "L" ||
+              char === "O" ||
+              char === "S" ||
+              char === "E" ||
+              char === "T";
+
+            const getRef = () => {
+              if (i === 4) return o1Ref;
+              if (i === 16) return o2Ref;
+              return null;
+            };
+
             return (
               <motion.span
                 key={i}
+                ref={getRef()}
                 variants={letter}
-                className={`inline-block ${isIV ? "iv-metal" : ""}`}
+                className={`inline-block ${isIVY ? "iv-metal" : ""}`}
                 aria-hidden={char === " "}
               >
                 {char === " " ? "\u00A0" : char}
@@ -53,7 +124,7 @@ export default function HomePage() {
             duration: 0.6,
             ease: [0.25, 0.1, 0.25, 1],
           }}
-          className="mt-6 text-sm text-neutral-400 tracking-wider"
+          className="mt-6 text-sm text-neutral-400 tracking-wider relative z-10"
         >
           Diseño. Estilo. Precisión.
         </motion.p>
@@ -66,7 +137,7 @@ export default function HomePage() {
             duration: 0.6,
             ease: [0.25, 0.1, 0.25, 1],
           }}
-          className="mt-8"
+          className="mt-8 relative z-10"
         >
           <a
             href="/catalog"

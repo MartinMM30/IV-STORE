@@ -11,12 +11,14 @@
     "assign-admin": "npx ts-node --project tsconfig.scripts.json scripts/assignAdminRole.ts"
   },
   "dependencies": {
+    "@gsap/react": "^2.1.2",
     "@headlessui/react": "^2.2.9",
     "@heroicons/react": "^2.2.0",
     "dotenv": "^17.2.3",
     "firebase": "^12.3.0",
     "firebase-admin": "^13.5.0",
     "framer-motion": "^12.23.22",
+    "gsap": "^3.13.0",
     "jose": "^6.1.0",
     "mongodb": "^6.20.0",
     "mongoose": "^8.18.3",

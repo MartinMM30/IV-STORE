@@ -1,15 +1,15 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/context/AuthContext";
+import Link from "next/link"; // Usamos Link de Next para mejor rendimiento
 
 export default function RegisterPage() {
-  const { signUp, user, loading } = useAuth();
+  const { signUp, user, loading: authLoading } = useAuth();
   const router = useRouter();
 
-  // Campos del formulario
+  // --- Estados del formulario ---
   const [email, setEmail] = useState("");
   const [nombre, setNombre] = useState("");
   const [edad, setEdad] = useState("");
@@ -19,208 +19,164 @@ export default function RegisterPage() {
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
 
-  const [error, setError] = useState("");
+  const [error, setError] = useState<string | null>(null);
   const [formLoading, setFormLoading] = useState(false);
 
-  // Redirigir si ya está autenticado
+  // --- Redirección si ya está autenticado ---
   useEffect(() => {
-    if (user && !loading) {
-      router.push("/");
+    if (user && !authLoading) {
+      router.push("/catalog"); // O la ruta que prefieras, ej: "/" o "/dashboard"
     }
-  }, [user, loading, router]);
+  }, [user, authLoading, router]);
 
+  // --- Manejo del envío del formulario ---
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setError("");
+    setError(null);
 
     // Validaciones
     if (password !== confirmPassword) {
       setError("Las contraseñas no coinciden.");
       return;
     }
-
     if (password.length < 6) {
       setError("La contraseña debe tener al menos 6 caracteres.");
       return;
     }
-
     if (!nombre || !edad || !ciudad || !pais || !telefono) {
       setError("Todos los campos son obligatorios.");
       return;
     }
 
     setFormLoading(true);
- try {
-    await signUp(email, password, {
-      nombre,
-      edad: Number(edad),
-      ciudad,
-      pais,
-      telefono,
-       // ✅ Añade el password al `extraData`
-    });
-      router.push("/");
+    try {
+      await signUp(email, password, {
+        nombre,
+        edad: Number(edad),
+        ciudad,
+        pais,
+        telefono,
+      });
+      router.push("/catalog"); // Redirige a /catalog tras registro exitoso
     } catch (err: any) {
       if (err.code === "auth/email-already-in-use") {
-        setError("Este email ya está registrado.");
+        setError("Este correo electrónico ya está en uso.");
       } else if (err.code === "auth/invalid-email") {
-        setError("El formato del correo electrónico es inválido.");
+        setError("El formato del correo es inválido.");
       } else {
-        setError(`Error al registrar: ${err.message}`);
+        setError("Ocurrió un error durante el registro.");
       }
+      console.error(err);
     } finally {
       setFormLoading(false);
     }
   };
 
+  // --- JSX con el estilo estandarizado ---
   return (
-    <div className="flex justify-center items-center py-12">
-      <div className="w-full max-w-md bg-white p-8 rounded-xl shadow-2xl border border-gray-100">
-        <h1 className="text-3xl font-extrabold text-gray-900 text-center mb-6">
-          Crear una Cuenta
-        </h1>
+    <div className="min-h-screen flex items-center justify-center bg-background text-foreground px-4">
+      <div className="w-full max-w-md bg-background/60 border border-neutral-800 rounded-2xl shadow-xl p-8 backdrop-blur-sm">
+        <h2 className="text-3xl font-light uppercase tracking-[0.25em] text-center mb-8">
+          Crear Cuenta
+        </h2>
 
-        <form onSubmit={handleSubmit} className="space-y-4">
-          {/* Nombre */}
-          <div>
-            <label className="block text-sm font-medium text-gray-700">Nombre completo</label>
-            <input
-              type="text"
-              value={nombre}
-              onChange={(e) => setNombre(e.target.value)}
-              required
-              className="input"
-              placeholder="Juan Pérez"
-              disabled={formLoading}
-            />
-          </div>
-
-          {/* Edad */}
-          <div>
-            <label className="block text-sm font-medium text-gray-700">Edad</label>
+        <form onSubmit={handleSubmit} className="space-y-5">
+          {/* Campos del perfil */}
+          <input
+            type="text"
+            placeholder="Nombre completo"
+            value={nombre}
+            onChange={(e) => setNombre(e.target.value)}
+            required
+            className="w-full bg-transparent border border-neutral-700 text-sm text-foreground px-4 py-3 rounded-md focus:border-accent focus:outline-none transition"
+          />
+          <div className="flex gap-4">
             <input
               type="number"
+              placeholder="Edad"
               value={edad}
               onChange={(e) => setEdad(e.target.value)}
               required
-              className="input"
-              placeholder="Ej. 25"
-              min={0}
-              disabled={formLoading}
+              className="w-full bg-transparent border border-neutral-700 text-sm text-foreground px-4 py-3 rounded-md focus:border-accent focus:outline-none transition"
             />
-          </div>
-
-          {/* Ciudad */}
-          <div>
-            <label className="block text-sm font-medium text-gray-700">Ciudad</label>
             <input
               type="text"
+              placeholder="Ciudad"
               value={ciudad}
               onChange={(e) => setCiudad(e.target.value)}
               required
-              className="input"
-              placeholder="Ciudad"
-              disabled={formLoading}
+              className="w-full bg-transparent border border-neutral-700 text-sm text-foreground px-4 py-3 rounded-md focus:border-accent focus:outline-none transition"
             />
           </div>
-
-          {/* País */}
-          <div>
-            <label className="block text-sm font-medium text-gray-700">País</label>
+          <div className="flex gap-4">
             <input
               type="text"
+              placeholder="País"
               value={pais}
               onChange={(e) => setPais(e.target.value)}
               required
-              className="input"
-              placeholder="País"
-              disabled={formLoading}
+              className="w-full bg-transparent border border-neutral-700 text-sm text-foreground px-4 py-3 rounded-md focus:border-accent focus:outline-none transition"
             />
-          </div>
-
-          {/* Teléfono */}
-          <div>
-            <label className="block text-sm font-medium text-gray-700">Teléfono</label>
             <input
               type="tel"
+              placeholder="Teléfono"
               value={telefono}
               onChange={(e) => setTelefono(e.target.value)}
               required
-              className="input"
-              placeholder="+57 300 123 4567"
-              disabled={formLoading}
+              className="w-full bg-transparent border border-neutral-700 text-sm text-foreground px-4 py-3 rounded-md focus:border-accent focus:outline-none transition"
             />
           </div>
 
-          {/* Email */}
-          <div>
-            <label className="block text-sm font-medium text-gray-700">Correo Electrónico</label>
-            <input
-              type="email"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              required
-              className="input"
-              placeholder="ejemplo@correo.com"
-              disabled={formLoading}
-            />
-          </div>
+          {/* Campos de autenticación */}
+          <input
+            type="email"
+            placeholder="Correo electrónico"
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            required
+            className="w-full bg-transparent border border-neutral-700 text-sm text-foreground px-4 py-3 rounded-md focus:border-accent focus:outline-none transition"
+          />
+          <input
+            type="password"
+            placeholder="Contraseña (mín. 6 caracteres)"
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+            required
+            className="w-full bg-transparent border border-neutral-700 text-sm text-foreground px-4 py-3 rounded-md focus:border-accent focus:outline-none transition"
+          />
+          <input
+            type="password"
+            placeholder="Confirmar contraseña"
+            value={confirmPassword}
+            onChange={(e) => setConfirmPassword(e.target.value)}
+            required
+            className="w-full bg-transparent border border-neutral-700 text-sm text-foreground px-4 py-3 rounded-md focus:border-accent focus:outline-none transition"
+          />
 
-          {/* Contraseña */}
-          <div>
-            <label className="block text-sm font-medium text-gray-700">Contraseña</label>
-            <input
-              type="password"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              required
-              className="input"
-              placeholder="Mínimo 6 caracteres"
-              disabled={formLoading}
-            />
-          </div>
-
-          {/* Confirmar Contraseña */}
-          <div>
-            <label className="block text-sm font-medium text-gray-700">Confirmar Contraseña</label>
-            <input
-              type="password"
-              value={confirmPassword}
-              onChange={(e) => setConfirmPassword(e.target.value)}
-              required
-              className="input"
-              placeholder="Confirma tu contraseña"
-              title="Confirma tu contraseña"
-              disabled={formLoading}
-            />
-          </div>
-
-          {/* Error */}
           {error && (
-            <p className="text-sm font-medium text-red-600 bg-red-50 p-3 rounded-lg">
+            <p className="text-sm font-medium text-red-400 bg-red-950/40 border border-red-700 p-3 rounded-md text-center">
               {error}
             </p>
           )}
 
-          {/* Botón */}
           <button
             type="submit"
             disabled={formLoading}
-            className={`w-full flex justify-center py-2 px-4 border border-transparent rounded-lg shadow-sm text-lg font-semibold text-white transition-colors ${
+            className={`w-full py-3 text-sm uppercase tracking-widest rounded-md transition ${
               formLoading
-                ? "bg-indigo-400 cursor-not-allowed"
-                : "bg-indigo-600 hover:bg-indigo-700 focus:ring-indigo-500"
+                ? "bg-neutral-700 cursor-not-allowed text-neutral-400"
+                : "bg-accent text-white hover:opacity-80"
             }`}
           >
-            {formLoading ? "Registrando..." : "Registrar"}
+            {formLoading ? "Registrando..." : "Registrarse"}
           </button>
         </form>
 
-        <p className="mt-6 text-center text-sm text-gray-600">
-          ¿Ya tienes una cuenta?{" "}
+        <p className="text-center text-xs text-neutral-400 mt-6 tracking-wider">
+          ¿Ya tienes cuenta?{" "}
           <Link
             href="/login"
-            className="font-medium text-indigo-600 hover:text-indigo-500"
+            className="text-accent hover:opacity-80 transition"
           >
             Inicia Sesión aquí
           </Link>
@@ -229,9 +185,3 @@ export default function RegisterPage() {
     </div>
   );
 }
-
-// Estilos reutilizables
-const inputClassName = `
-  mt-1 block w-full px-4 py-2 border border-gray-300 rounded-lg shadow-sm 
-  focus:ring-indigo-500 focus:border-indigo-500
-`;

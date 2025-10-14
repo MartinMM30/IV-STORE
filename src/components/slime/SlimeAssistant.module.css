@@ -1,0 +1,125 @@
+/* Contenedor que envuelve al SVG para capturar el clic de abrir/cerrar chat */
+.slimeClickWrapper {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100px;
+  height: 100px;
+  z-index: 1000;
+  cursor: pointer;
+}
+
+.slimeSvg {
+  filter: drop-shadow(0 5px 10px rgba(0, 0, 0, 0.3));
+  pointer-events: none; /* Hacemos que el SVG no bloquee el clic del wrapper */
+}
+
+.slimeEyesHidden {
+  opacity: 0;
+}
+
+.eyesContainer {
+  stroke: #0d3c5c;
+  stroke-width: 4;
+  stroke-linecap: round;
+}
+
+/* Estilos del Chat */
+.chatContainer {
+  position: fixed;
+  bottom: 20px;
+  right: 140px;
+  width: 380px;
+  height: 550px;
+  background-color: #fff;
+  border-radius: 12px;
+  box-shadow: 0 4px 12px #0000001a;
+  display: flex;
+  flex-direction: column;
+  z-index: 999;
+}
+.chatWindow {
+  flex-grow: 1;
+  padding: 20px;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+}
+.message {
+  padding: 10px 15px;
+  border-radius: 18px;
+  margin-bottom: 10px;
+  max-width: 80%;
+  line-height: 1.4;
+}
+.assistantMessage {
+  background-color: #e9e9eb;
+  color: #000;
+  align-self: flex-start;
+}
+.userMessage {
+  background-color: #007bff;
+  color: #fff;
+  align-self: flex-end;
+}
+.inputArea {
+  padding: 15px;
+  border-top: 1px solid #ddd;
+  display: flex;
+}
+.userInput {
+  flex-grow: 1;
+  border: 1px solid #ccc;
+  border-radius: 18px;
+  padding: 10px 15px;
+  font-size: 16px;
+  outline: none;
+}
+.sendButton {
+  background-color: #007bff;
+  color: #fff;
+  border: none;
+  padding: 10px 20px;
+  border-radius: 18px;
+  margin-left: 10px;
+  cursor: pointer;
+}
+.sendButton:hover {
+  background-color: #0056b3;
+}
+.speechBubble {
+  position: absolute;
+  bottom: 100px; /* Posicionado justo encima del slime */
+  right: 0;
+  width: 200px;
+  background-color: white;
+  padding: 15px;
+  border-radius: 12px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  font-size: 14px;
+  line-height: 1.5;
+  color: #333;
+  animation: fadeIn 0.3s ease-out; /* Animación de aparición */
+}
+
+/* Pequeño triángulo para que parezca que sale del slime */
+.speechBubble::after {
+  content: "";
+  position: absolute;
+  bottom: -10px;
+  right: 45px;
+  border-width: 10px 10px 0;
+  border-style: solid;
+  border-color: white transparent transparent transparent;
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}

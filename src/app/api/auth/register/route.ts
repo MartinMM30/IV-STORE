@@ -1,51 +1,73 @@
 // src/app/api/auth/register/route.ts
 import { NextResponse } from "next/server";
-import { createUserWithEmailAndPassword } from "firebase/auth";
-import { auth } from "@/lib/firebase";
+import { admin } from "@/lib/firebaseAdmin"; // ✅ Usamos Firebase Admin para verificar
 import { connectMongoose } from "@/lib/mongooseClient";
-import { User } from "@/models/User"; // ✅ Importamos el modelo de usuario de Mongoose
+import { User } from "@/models/User"; // Asumo que tienes este modelo de Mongoose
 
 export async function POST(req: Request) {
   try {
-    const { email, password, nombre, edad, ciudad, pais, telefono } = await req.json();
+    // --- 1. VERIFICAR LA IDENTIDAD DEL USUARIO ---
+    const authHeader = req.headers.get("Authorization");
+    const token = authHeader?.split(" ")[1];
 
-    if (!email || !password) {
-      return NextResponse.json({ error: "Email y password son requeridos" }, { status: 400 });
+    if (!token) {
+      return NextResponse.json(
+        { error: "No se proporcionó token de autorización" },
+        { status: 401 }
+      );
     }
 
-    // 1. Crear usuario en Firebase
-    const userCredential = await createUserWithEmailAndPassword(auth, email, password);
-    const { uid } = userCredential.user;
+    // Verificamos el token para obtener el UID y email del usuario que el CLIENTE acaba de crear
+    const decodedToken = await admin.auth().verifyIdToken(token);
+    const { uid, email } = decodedToken;
 
-    // 2. Conectar a Mongo con Mongoose
+    // --- 2. OBTENER LOS DATOS DEL PERFIL ---
+    // Obtenemos los datos extra (nombre, edad, etc.) del cuerpo de la petición
+    const { nombre, edad, ciudad, pais, telefono } = await req.json();
+
+    // --- 3. GUARDAR EN MONGODB ---
     await connectMongoose();
-      const existingUser = await User.findOne({ uid });
+
+    // Verificamos si ya existe un perfil para este UID (medida de seguridad)
+    const existingUser = await User.findOne({ uid });
     if (existingUser) {
-      return NextResponse.json({ message: "Usuario ya existe." }, { status: 409 });
+      return NextResponse.json(
+        { message: "El perfil de este usuario ya existe en MongoDB." },
+        { status: 409 }
+      );
     }
-    
-    // 3. Insertar en Mongo usando el modelo de Mongoose
+
+    // Creamos el nuevo documento de usuario en MongoDB
     const newUser = await User.create({
-      uid,
-      email,
-      nombre: nombre || "",
-      edad: edad || null,
-      ciudad: ciudad || "",
-      pais: pais || "",
-      telefono: telefono || "",
-      role: "user", // ✅ El rol por defecto es "user"
+      uid, // Usamos el UID verificado del token
+      email, // Usamos el email verificado del token
+      nombre,
+      edad,
+      ciudad,
+      pais,
+      telefono,
+      role: "user", // Rol por defecto
       createdAt: new Date(),
     });
 
-    return NextResponse.json({ uid: newUser.uid, email: newUser.email, role: newUser.role }, { status: 201 });
+    return NextResponse.json(
+      { message: "Perfil de usuario creado exitosamente", user: newUser },
+      { status: 201 }
+    );
   } catch (error: any) {
-    console.error("❌ Error en register:", error.message);
-    
-    // Manejar error de Firebase (ej. email ya en uso)
-    if (error.code === "auth/email-already-in-use") {
-        return NextResponse.json({ error: "Este email ya está registrado." }, { status: 409 });
+    console.error("❌ Error en la API de registro:", error.message);
+
+    // Manejar errores de verificación de token
+    if (error.code === "auth/id-token-expired") {
+      return NextResponse.json(
+        { error: "El token ha expirado" },
+        { status: 401 }
+      );
     }
-    
-    return NextResponse.json({ error: error.message }, { status: 500 });
+
+    return NextResponse.json(
+      { error: "Error interno del servidor" },
+      { status: 500 }
+    );
   }
 }

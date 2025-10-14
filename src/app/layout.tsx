@@ -1,18 +1,12 @@
 import "./globals.css";
-
 import { AuthProvider } from "@/context/AuthContext";
-
-// Importa CartProvider si aún lo tienes en tu estructura de context
-
 import { CartProvider } from "@/context/CartContext";
-
 import Navbar from "@/components/Navbar";
-
 import Footer from "@/components/Footer";
+import SlimeAssistant from "../components/slime/SlimeAssistant"; // <-- 1. AÑADE ESTA LÍNEA DE IMPORTACIÓN
 
 export const metadata = {
   title: "IV Design",
-
   description: "E-commerce demo con Next.js y Tailwind",
 };
 
@@ -31,6 +25,7 @@ export default function RootLayout({
               {children}
             </main>
             <Footer />
+            <SlimeAssistant /> {/* Es mejor ponerlo aquí al final del body */}
           </CartProvider>
         </AuthProvider>
       </body>

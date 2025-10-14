@@ -25,7 +25,7 @@ export default function RootLayout({
               {children}
             </main>
             <Footer />
-            <SlimeAssistant /> {/* Es mejor ponerlo aquí al final del body */}
+            <SlimeAssistant />
           </CartProvider>
         </AuthProvider>
       </body>

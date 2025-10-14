@@ -108,7 +108,7 @@ export default function HomePage() {
           // ✅ CLAVE #2: Sin 'absolute'. Ahora sigue el flujo normal del documento. Margen ajustado.
           className="mt-4 text-sm text-neutral-400 tracking-wider z-10"
         >
-          Diseño. Estilo. Precisión.
+          Technology, Fashion and Style
         </motion.p>
 
         <motion.div
@@ -126,7 +126,7 @@ export default function HomePage() {
             href="/catalog"
             className="px-6 py-3 bg-[var(--color-accent)] text-white uppercase tracking-widest text-xs rounded-md hover:opacity-90 transition active:scale-95"
           >
-            Ver catálogo
+            Catalog
           </a>
         </motion.div>
       </div>

@@ -82,13 +82,34 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const signIn = async (email: string, password: string) => {
     setLoading(true);
     try {
-      await signInWithEmailAndPassword(auth, email, password);
+      // 1. Inicia sesión en el cliente con Firebase
+      const userCredential = await signInWithEmailAndPassword(
+        auth,
+        email,
+        password
+      );
+
+      // 2. Obtén el ID Token de Firebase
+      const token = await userCredential.user.getIdToken();
+
+      // 3. ✅ Envía el token a una API para que cree la cookie de sesión
+      await fetch("/api/auth/session", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ token }),
+      });
+
+      // onAuthStateChanged se refrescará y actualizará el userProfile
     } finally {
       setLoading(false);
     }
   };
 
   const logout = async () => {
+    // 1. ✅ Llama a nuestra API para que destruya la cookie de sesión
+    await fetch("/api/auth/session", { method: "DELETE" });
+
+    // 2. Cierra la sesión en el cliente de Firebase
     await signOut(auth);
   };
 

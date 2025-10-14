@@ -4,14 +4,13 @@ import { motion, Variants } from "framer-motion";
 import { useRef, useState, useEffect } from "react";
 
 export default function HomePage() {
-  const text1 = "welcome to";
-  const text2 = "MY CLOSET";
-  const letters = Array.from(text1 + " " + text2);
+  const fullText = "welcome to MY CLOSET";
+  const words = fullText.split(" ");
 
-  const o1Ref = useRef<HTMLSpanElement>(null);
-  const o2Ref = useRef<HTMLSpanElement>(null);
+  // 1. Una única referencia para el contenedor del texto (el h1)
+  const textContainerRef = useRef<HTMLHeadingElement>(null);
 
-  const [haloStyle, setHaloStyle] = useState({});
+  const [haloStyle, setHaloStyle] = useState({ width: 0, height: 0 });
   const [isHaloVisible, setIsHaloVisible] = useState(false);
 
   const container: Variants = {
@@ -30,46 +29,39 @@ export default function HomePage() {
   };
 
   useEffect(() => {
-    const calculateHaloPosition = () => {
-      if (o1Ref.current && o2Ref.current) {
-        const rect1 = o1Ref.current.getBoundingClientRect();
-        const rect2 = o2Ref.current.getBoundingClientRect();
-        const containerRect =
-          o1Ref.current.parentElement?.getBoundingClientRect();
-
-        if (!containerRect) return;
-
-        const left = rect1.left - containerRect.left + rect1.width / 2;
-        const top = rect1.top - containerRect.top + rect1.height / 2;
-        const width = rect2.right - rect1.left;
-
-        const height = width;
+    const calculateHaloSize = () => {
+      if (textContainerRef.current) {
+        // 2. Cálculo de tamaño simplificado.
+        // Medimos el ancho del texto y hacemos el halo un poco más pequeño (ej. 80%)
+        const width = textContainerRef.current.clientWidth;
+        const size = Math.max(200, width * 0.8); // Un tamaño mínimo para que no desaparezca
 
         setHaloStyle({
-          top: top - height / 2,
-          left: left - rect1.width / 2,
-          width: `${width}px`,
-          height: `${height}px`,
+          width: size,
+          height: size, // Siempre un círculo
         });
 
-        setTimeout(() => setIsHaloVisible(true), 500);
+        // La visibilidad se activa después de la animación de las letras
+        setTimeout(() => setIsHaloVisible(true), fullText.length * 60);
       }
     };
 
-    calculateHaloPosition();
-    window.addEventListener("resize", calculateHaloPosition);
+    // Ejecutamos el cálculo después de un breve instante para asegurar que todo esté renderizado
+    const timer = setTimeout(calculateHaloSize, 100);
 
-    return () => window.removeEventListener("resize", calculateHaloPosition);
-
-    // --- ¡AQUÍ ESTÁ LA CORRECCIÓN! ---
-    // Cambiamos [letters] por un array vacío [] para que el efecto se ejecute solo una vez.
+    window.addEventListener("resize", calculateHaloSize);
+    return () => {
+      clearTimeout(timer);
+      window.removeEventListener("resize", calculateHaloSize);
+    };
   }, []);
 
   return (
     <main className="flex items-center justify-center min-h-screen bg-[var(--color-bg)] text-[var(--color-fg)] px-4 sm:px-6 overflow-hidden">
-      <div className="text-center relative">
+      <div className="text-center relative flex justify-center items-center">
+        {/* 3. El Halo ahora se centra con CSS, no con JS. Es mucho más fiable. */}
         <motion.div
-          className="halo-ripple"
+          className="halo-ripple absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2"
           style={haloStyle}
           initial={{ opacity: 0, scale: 0.8 }}
           animate={{
@@ -80,51 +72,42 @@ export default function HomePage() {
         />
 
         <motion.h1
+          ref={textContainerRef} // Asignamos la ref al h1
           variants={container}
           initial="hidden"
           animate="show"
           className="text-4xl sm:text-6xl md:text-7xl font-light tracking-[0.25em] uppercase relative z-10"
         >
-          {letters.map((char, i) => {
-            const isIVY =
-              char === "M" ||
-              char === "Y" ||
-              char === "C" ||
-              char === "L" ||
-              char === "O" ||
-              char === "S" ||
-              char === "E" ||
-              char === "T";
-
-            const getRef = () => {
-              if (i === 4) return o1Ref;
-              if (i === 16) return o2Ref;
-              return null;
-            };
-
-            return (
-              <motion.span
-                key={i}
-                ref={getRef()}
-                variants={letter}
-                className={`inline-block ${isIVY ? "iv-metal" : ""}`}
-                aria-hidden={char === " "}
-              >
-                {char === " " ? "\u00A0" : char}
-              </motion.span>
-            );
-          })}
+          {words.map((word, wordIndex) => (
+            <span key={wordIndex} className="inline-block whitespace-nowrap">
+              {word.split("").map((char, charIndex) => {
+                const isMetal = "MYCLOSET".includes(char);
+                return (
+                  <motion.span
+                    key={charIndex}
+                    variants={letter}
+                    className={`inline-block ${isMetal ? "iv-metal" : ""}`}
+                  >
+                    {char}
+                  </motion.span>
+                );
+              })}
+              {wordIndex < words.length - 1 && <span>&nbsp;</span>}
+            </span>
+          ))}
         </motion.h1>
 
+        {/* El resto del componente no necesita cambios */}
         <motion.p
           initial={{ opacity: 0, y: 10 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{
-            delay: letters.length * 0.06 + 0.25,
+            delay: fullText.length * 0.06 + 0.25,
             duration: 0.6,
             ease: [0.25, 0.1, 0.25, 1],
           }}
-          className="mt-6 text-sm text-neutral-400 tracking-wider relative z-10"
+          // Colocamos el texto y el botón como absolutos debajo del h1 para que no afecten el centrado del halo
+          className="absolute top-full mt-6 text-sm text-neutral-400 tracking-wider w-full"
         >
           Diseño. Estilo. Precisión.
         </motion.p>
@@ -133,15 +116,15 @@ export default function HomePage() {
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           transition={{
-            delay: letters.length * 0.06 + 0.7,
+            delay: fullText.length * 0.06 + 0.7,
             duration: 0.6,
             ease: [0.25, 0.1, 0.25, 1],
           }}
-          className="mt-8 relative z-10"
+          className="absolute top-full mt-20 w-full"
         >
           <a
             href="/catalog"
-            className="px-6 py-3 bg-[var(--color-accent)] text-white uppercase tracking-widest text-xs rounded-md hover:opacity-90 transition"
+            className="px-6 py-3 bg-[var(--color-accent)] text-white uppercase tracking-widest text-xs rounded-md hover:opacity-90 transition active:scale-95"
           >
             Ver catálogo
           </a>

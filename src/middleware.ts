@@ -1,6 +1,10 @@
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
 
+// Esto es CRÍTICO. Le dice a Vercel que ejecute este middleware en el entorno Node.js,
+// que es necesario para que firebase-admin funcione.
+export const runtime = "nodejs";
+
 export async function middleware(req: NextRequest) {
   const url = req.nextUrl;
   const pathname = url.pathname;
@@ -10,7 +14,7 @@ export async function middleware(req: NextRequest) {
     return NextResponse.next();
   }
 
-  // Si no hay cookie de sesión, redirige a login inmediatamente.
+  // Si no hay cookie de sesión, redirige a login.
   const sessionCookie = req.cookies.get("session")?.value;
   if (!sessionCookie) {
     const loginUrl = new URL("/login", req.url);
@@ -18,34 +22,30 @@ export async function middleware(req: NextRequest) {
     return NextResponse.redirect(loginUrl);
   }
 
-  // Obtenemos la URL absoluta de nuestra API de verificación.
-  const verifyUrl = new URL("/api/auth/verify-admin", req.url);
-
   try {
-    // ✅ CAMBIO CLAVE: Pasamos la cookie manualmente en las cabeceras.
-    const response = await fetch(verifyUrl, {
-      headers: {
-        // Adjuntamos la cookie de sesión a la petición para que la API pueda leerla.
-        Cookie: `session=${sessionCookie}`,
-      },
-    });
+    // ✅ TRUCO CLAVE: Importamos dinámicamente firebase-admin DENTRO de la función.
+    // Esto evita el error de compilación de Vercel en el entorno Edge.
+    const { admin } = await import("@/lib/firebaseAdmin");
 
-    const data = await response.json();
+    // Verificamos la cookie de sesión. Este es el método correcto para las cookies.
+    const decodedToken = await admin
+      .auth()
+      .verifySessionCookie(sessionCookie, true);
 
-    // Si la API confirma que es un admin, permite el acceso.
-    if (response.ok && data.isAdmin) {
-      return NextResponse.next();
+    // Si el usuario no tiene el rol de admin, lo redirigimos a la página de inicio.
+    if (decodedToken.role !== "admin") {
+      return NextResponse.redirect(new URL("/", req.url));
     }
 
-    // Si no es un admin (o cualquier otro caso), redirige a la página de inicio.
-    return NextResponse.redirect(new URL("/", req.url));
+    // Si todo es correcto, permite el acceso.
+    return NextResponse.next();
   } catch (error) {
     console.error(
-      "Middleware: Error llamando a la API de verificación. Redirigiendo a login.",
+      "Middleware: Sesión inválida o expirada. Redirigiendo a login.",
       error
     );
 
-    // Si la llamada a la API falla, es más seguro redirigir a login y limpiar la cookie.
+    // Si la cookie es inválida, redirige a login y la limpia.
     const loginUrl = new URL("/login", req.url);
     const response = NextResponse.redirect(loginUrl);
     response.cookies.delete("session");

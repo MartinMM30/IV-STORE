@@ -1,6 +1,8 @@
-// app/api/auth/session/route.ts
 import { NextResponse } from "next/server";
-// ❌ Ya no necesitamos importar 'cookies' de 'next/headers' aquí
+import { admin } from "@/lib/firebaseAdmin";
+
+// Esta ruta debe ser dinámica porque depende de la petición.
+export const dynamic = "force-dynamic";
 
 // Función para CREAR la cookie de sesión
 export async function POST(request: Request) {
@@ -13,23 +15,27 @@ export async function POST(request: Request) {
       );
     }
 
-    // ✅ 1. Primero creamos la respuesta que vamos a enviar
+    // ✅ CAMBIO CLAVE: Convertimos el token de ID en una cookie de sesión.
+    const expiresIn = 60 * 60 * 24 * 7 * 1000; // 7 días en milisegundos
+    const sessionCookie = await admin
+      .auth()
+      .createSessionCookie(token, { expiresIn });
+
     const response = NextResponse.json({ status: "success" });
 
-    // ✅ 2. Luego, establecemos la cookie en ESA respuesta
-    response.cookies.set("session", token, {
+    // Establecemos la cookie de sesión GENERADA, no el token original.
+    response.cookies.set("session", sessionCookie, {
       httpOnly: true,
       secure: process.env.NODE_ENV === "production",
-      maxAge: 60 * 60 * 24 * 7, // 7 días
+      maxAge: expiresIn / 1000, // maxAge está en segundos
       path: "/",
     });
 
-    // ✅ 3. Finalmente, retornamos la respuesta con la cookie ya establecida
     return response;
   } catch (error) {
-    console.error("Error al crear sesión:", error);
+    console.error("Error al crear la cookie de sesión:", error);
     return NextResponse.json(
-      { error: "Error al crear sesión" },
+      { error: "Error al crear la sesión" },
       { status: 500 }
     );
   }
@@ -38,18 +44,13 @@ export async function POST(request: Request) {
 // Función para BORRAR la cookie de sesión
 export async function DELETE() {
   try {
-    // ✅ 1. Creamos la respuesta
     const response = NextResponse.json({ status: "success" });
-
-    // ✅ 2. Establecemos la cookie para que expire inmediatamente
     response.cookies.set("session", "", {
       httpOnly: true,
       secure: process.env.NODE_ENV === "production",
       expires: new Date(0),
       path: "/",
     });
-
-    // ✅ 3. Retornamos la respuesta
     return response;
   } catch (error) {
     console.error("Error al cerrar sesión:", error);

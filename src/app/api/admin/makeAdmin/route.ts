@@ -11,12 +11,9 @@ export async function POST(req: Request) {
 
     // Usamos la conexión de Mongoose
     await connectMongoose();
-    
+
     // Y el modelo de Mongoose para hacer la actualización
-    await User.findOneAndUpdate(
-      { email },
-      { $set: { role: "admin" } }
-    );
+    await User.findOneAndUpdate({ email }, { $set: { role: "admin" } });
 
     return NextResponse.json({ message: `${email} ahora es admin` });
   } catch (error) {

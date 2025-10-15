@@ -1,9 +1,10 @@
 "use client";
 
-export const dynamic = "force-dynamic"; // evita prerender estático
-export const runtime = "nodejs";
+// No es necesario 'dynamic' ni 'runtime' en componentes de cliente
+// export const dynamic = "force-dynamic";
+// export const runtime = "nodejs";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import Link from "next/link";
 import { useAuth } from "@/context/AuthContext";
 
@@ -20,29 +21,33 @@ export default function AdminProductsPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  const fetchProducts = async () => {
-    if (!isAdmin && !authLoading) {
+  const fetchProducts = useCallback(async () => {
+    if (authLoading || !user) {
+      // Si la autenticación aún está cargando o no hay usuario, esperamos.
+      return;
+    }
+
+    if (!isAdmin) {
       setLoading(false);
       setError("Acceso denegado. No eres administrador.");
       return;
     }
 
-    if (authLoading || !user) return;
-
     try {
+      setLoading(true);
+      setError(null);
       const token = await user.getIdToken();
-      // 🚨 CAMBIO: Llama a la nueva API de admin
       const res = await fetch("/api/admin/products", {
         headers: {
           Authorization: `Bearer ${token}`,
         },
       });
 
-      if (res.status === 401) throw new Error("Acceso no autorizado.");
-      if (!res.ok) throw new Error("Error al cargar productos.");
+      if (!res.ok) {
+        throw new Error(`Error al cargar productos: ${res.statusText}`);
+      }
 
       const data = await res.json();
-      // Asumiendo que la API devuelve un array de productos directamente
       setProducts(data);
     } catch (err: any) {
       console.error("Error cargando productos", err);
@@ -50,23 +55,16 @@ export default function AdminProductsPage() {
     } finally {
       setLoading(false);
     }
-  };
-
-  // Al cargar o cambiar el estado de autenticación, recargamos la lista
-  useEffect(() => {
-    fetchProducts();
   }, [isAdmin, authLoading, user]);
 
-  const handleDelete = async (id: string) => {
-    // 🚨 CORRECCIÓN: Usar prompt para simular confirmación y evitar window.alert/confirm
-    console.log(`⚠️ Solicitud de eliminación del producto ID: ${id}`);
+  useEffect(() => {
+    fetchProducts();
+  }, [fetchProducts]);
 
+  const handleDelete = async (id: string) => {
     // Simulación de Modal de Confirmación
     const userConfirmation = prompt(
-      `Escribe 'ELIMINAR' para confirmar la eliminación del producto ${id.substring(
-        0,
-        8
-      )}:`
+      `Escribe 'ELIMINAR' para confirmar la eliminación del producto:`
     );
 
     if (userConfirmation !== "ELIMINAR") {
@@ -75,12 +73,13 @@ export default function AdminProductsPage() {
     }
 
     if (!user) {
-      console.error("No se pudo obtener el token de usuario.");
+      setError("No se pudo obtener el token de usuario para la eliminación.");
       return;
     }
 
     try {
       const token = await user.getIdToken();
+      // ✅ La ruta correcta debe incluir /admin/
       const res = await fetch(`/api/admin/products/${id}`, {
         method: "DELETE",
         headers: { Authorization: `Bearer ${token}` },
@@ -92,22 +91,22 @@ export default function AdminProductsPage() {
       }
 
       // Si la eliminación es exitosa, recarga la lista
-      fetchProducts();
-      console.log(`✅ Producto ${id.substring(0, 8)} eliminado correctamente.`);
+      await fetchProducts();
     } catch (error: any) {
       console.error("❌ Error de eliminación:", error.message);
-      // Mostrar error en la UI (opcional, aquí lo dejamos en consola para evitar alert)
-      // setError(`Fallo al eliminar: ${error.message}`);
+      setError(`Fallo al eliminar: ${error.message}`);
     }
   };
 
   if (loading || authLoading)
-    return <div className="text-center py-8">Cargando...</div>;
+    return (
+      <div className="text-center py-8">Cargando panel de administrador...</div>
+    );
   if (error)
-    return <div className="text-center py-8 text-red-600">Error: {error}</div>;
+    return <div className="text-center py-8 text-red-500">Error: {error}</div>;
   if (!isAdmin)
     return (
-      <div className="text-center py-8 text-red-600">
+      <div className="text-center py-8 text-red-500">
         Acceso denegado. Debes ser administrador.
       </div>
     );
@@ -169,8 +168,9 @@ export default function AdminProductsPage() {
                     >
                       Editar
                     </Link>
+                    {/* ✅ CAMBIO CLAVE: El botón ahora llama a la función handleDelete */}
                     <button
-                      onClick={() => console.log("Eliminar producto", p._id)}
+                      onClick={() => handleDelete(p._id)}
                       className="text-red-500 hover:text-red-600 uppercase text-xs tracking-widest"
                     >
                       Eliminar

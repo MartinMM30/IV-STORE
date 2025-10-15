@@ -1,15 +1,16 @@
 import { NextResponse } from "next/server";
 import { connectMongoose } from "@/lib/mongooseClient";
 import { Product } from "@/models/Product";
+import { checkAdmin } from "@/lib/apiMiddleware"; // Importamos el verificador
 
-export const runtime = "nodejs";
+export const dynamic = "force-dynamic";
 
-// ✅ GET - Obtener producto por ID
+// GET - Obtener producto por ID (no necesita protección si es público)
 export async function GET(
   req: Request,
-  context: { params: Promise<{ productId: string }> }
+  { params }: { params: { productId: string } }
 ) {
-  const { productId } = await context.params;
+  const { productId } = params;
 
   try {
     await connectMongoose();
@@ -22,7 +23,6 @@ export async function GET(
     }
     return NextResponse.json(product);
   } catch (error) {
-    console.error("Error en GET /api/products/[productId]:", error);
     return NextResponse.json(
       { message: "Error interno del servidor" },
       { status: 500 }
@@ -30,19 +30,27 @@ export async function GET(
   }
 }
 
-// ✅ PUT - Actualizar producto
+// PUT - Actualizar producto
 export async function PUT(
   req: Request,
-  context: { params: Promise<{ productId: string }> }
+  { params }: { params: { productId: string } }
 ) {
-  const { productId } = await context.params;
+  // ✅ AÑADIDO: Verificación de que el usuario es admin
+  const authCheck = await checkAdmin(req);
+  if (authCheck.status !== 200) {
+    return NextResponse.json(
+      { message: authCheck.message },
+      { status: authCheck.status }
+    );
+  }
+
+  const { productId } = params;
 
   try {
     const data = await req.json();
     await connectMongoose();
     const updated = await Product.findByIdAndUpdate(productId, data, {
       new: true,
-      runValidators: true,
     });
     if (!updated) {
       return NextResponse.json(
@@ -52,7 +60,6 @@ export async function PUT(
     }
     return NextResponse.json(updated);
   } catch (error) {
-    console.error("Error en PUT /api/products/[productId]:", error);
     return NextResponse.json(
       { message: "Error interno del servidor" },
       { status: 500 }
@@ -60,12 +67,21 @@ export async function PUT(
   }
 }
 
-// ✅ DELETE - Eliminar producto
+// DELETE - Eliminar producto
 export async function DELETE(
   req: Request,
-  context: { params: Promise<{ productId: string }> }
+  { params }: { params: { productId: string } }
 ) {
-  const { productId } = await context.params;
+  // ✅ AÑADIDO: Verificación de que el usuario es admin
+  const authCheck = await checkAdmin(req);
+  if (authCheck.status !== 200) {
+    return NextResponse.json(
+      { message: authCheck.message },
+      { status: authCheck.status }
+    );
+  }
+
+  const { productId } = params;
 
   try {
     await connectMongoose();
@@ -78,7 +94,6 @@ export async function DELETE(
     }
     return NextResponse.json({ message: "Producto eliminado correctamente" });
   } catch (error) {
-    console.error("Error en DELETE /api/products/[productId]:", error);
     return NextResponse.json(
       { message: "Error interno del servidor" },
       { status: 500 }

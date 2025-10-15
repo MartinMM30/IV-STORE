@@ -41,11 +41,13 @@ export async function middleware(req: NextRequest) {
     return NextResponse.next();
   } catch (error) {
     console.error(
-      "Middleware: Sesión inválida o expirada. Redirigiendo a login.",
+      "Middleware: La verificación de la sesión de admin falló.",
       error
     );
 
-    // Si la cookie es inválida, redirige a login y la limpia.
+    // ✅ CAMBIO CLAVE: Si la verificación falla (ej. cookie expirada o inválida),
+    // en lugar de solo redirigir, ahora redirigimos a /login y BORRAMOS la cookie corrupta.
+    // Esto previene bucles de redirección y asegura un cierre de sesión limpio.
     const loginUrl = new URL("/login", req.url);
     const response = NextResponse.redirect(loginUrl);
     response.cookies.delete("session");

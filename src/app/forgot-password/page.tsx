@@ -1,4 +1,3 @@
-// src/app/forgot-password/page.tsx
 "use client";
 
 import { useState } from "react";
@@ -19,21 +18,13 @@ export default function ForgotPasswordPage() {
     setLoading(true);
 
     try {
-      // ✅ AÑADIMOS LA CONFIGURACIÓN DE LA ACCIÓN
-      const actionCodeSettings = {
-        // Esta es la URL de nuestra propia página para restablecer la contraseña.
-        // `window.location.origin` asegura que funcione tanto en localhost como en Vercel.
-        url: `${window.location.origin}/reset-password`,
-        handleCodeInApp: true,
-      };
+      await sendPasswordResetEmail(auth, email);
 
-      await sendPasswordResetEmail(auth, email, actionCodeSettings);
       setMessage(
         "✅ Si tu correo está registrado, recibirás un enlace para restablecer tu contraseña."
       );
     } catch (err: any) {
       console.error("Error de restablecimiento de contraseña:", err);
-      // Mantenemos el mensaje genérico por seguridad
       setMessage(
         "✅ Si tu correo está registrado, recibirás un enlace para restablecer tu contraseña."
       );
@@ -44,7 +35,6 @@ export default function ForgotPasswordPage() {
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-background text-foreground px-4">
-      {/* El resto del JSX no cambia, sigue igual que antes */}
       <div className="w-full max-w-md bg-background/60 border border-neutral-800 rounded-2xl shadow-xl p-8 backdrop-blur-sm">
         <h2 className="text-3xl font-light uppercase tracking-[0.25em] text-center mb-8">
           Restablecer Contraseña

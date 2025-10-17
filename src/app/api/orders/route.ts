@@ -3,6 +3,7 @@ import { connectMongoose } from "@/lib/mongooseClient";
 import { Product } from "@/models/Product";
 import { Order } from "@/models/Orders"; // Corregido para apuntar a tu modelo de Order
 import { Cart } from "@/models/Cart"; // Añadido para poder limpiar el carrito
+import mongoose from "mongoose"; // ✅ 1. IMPORTAR mongoose
 
 // Asegura que la ruta no sea cacheada y se ejecute en el servidor
 export const dynamic = "force-dynamic";
@@ -13,7 +14,7 @@ export const dynamic = "force-dynamic";
 export async function POST(request: Request) {
   try {
     const body = await request.json();
-    const { userId, items, shippingAddress, guestInfo, paymentIntentId } = body; // Añadido paymentIntentId
+    const { userId, items, shippingAddress, guestInfo, paymentIntentId } = body;
 
     // --- Validaciones de Entrada ---
     if (!items || !Array.isArray(items) || items.length === 0) {
@@ -37,12 +38,24 @@ export async function POST(request: Request) {
 
     await connectMongoose();
 
+    // ✅ 2. CORRECCIÓN: Convertimos el productId de string a ObjectId para cada item
+    const sanitizedOrderItems = items.map((item: any) => {
+      if (!mongoose.Types.ObjectId.isValid(item.productId)) {
+        // Si el ID no es válido, lanzamos un error para detener el proceso.
+        throw new Error(`El ID de producto no es válido: ${item.productId}`);
+      }
+      return {
+        ...item,
+        productId: new mongoose.Types.ObjectId(item.productId),
+      };
+    });
+
     let totalPrice = 0;
-    const orderItems: any[] = [];
     const stockUpdatePromises: Promise<any>[] = [];
 
     // --- Verificación de Productos y Stock en el Servidor ---
-    for (const item of items) {
+    for (const item of sanitizedOrderItems) {
+      // Usamos la lista ya sanitizada
       const product = await Product.findById(item.productId);
 
       if (!product) {
@@ -61,13 +74,6 @@ export async function POST(request: Request) {
         );
       }
 
-      orderItems.push({
-        productId: product._id,
-        name: product.name,
-        quantity: item.quantity,
-        price: product.price,
-      });
-
       totalPrice += product.price * item.quantity;
 
       // Preparamos la actualización de stock
@@ -83,11 +89,11 @@ export async function POST(request: Request) {
     const orderDocument = {
       userId: userId || null,
       guestInfo: userId ? undefined : guestInfo,
-      orderItems,
+      orderItems: sanitizedOrderItems, // ✅ 3. Usamos los items con el ID corregido
       shippingAddress,
       totalPrice,
-      paymentIntentId, // Guardamos el ID de pago de Stripe
-      status: "pagado", // El pedido se crea después del pago exitoso
+      paymentIntentId,
+      status: "pagado",
     };
 
     const newOrder = await Order.create(orderDocument);
@@ -110,10 +116,10 @@ export async function POST(request: Request) {
       },
       { status: 201 }
     );
-  } catch (error) {
+  } catch (error: any) {
     console.error("❌ Error en la API de Órdenes (POST):", error);
     return NextResponse.json(
-      { error: "Error interno al procesar la orden." },
+      { error: `Error interno al procesar la orden: ${error.message}` },
       { status: 500 }
     );
   }

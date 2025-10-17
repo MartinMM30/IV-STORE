@@ -14,18 +14,39 @@ export const dynamic = "force-dynamic";
 export async function POST(request: Request) {
   try {
     const body = await request.json();
-    const { userId, items, shippingAddress, guestInfo, paymentIntentId } = body;
+    const {
+      userId,
+      orderItems: items,
+      shippingAddress,
+      guestInfo,
+      paymentIntentId,
+    } = body;
 
-    // --- Validaciones de Entrada ---
+    // --- Validaciones de Entrada Detalladas ---
     if (!items || !Array.isArray(items) || items.length === 0) {
       return NextResponse.json(
-        { error: "No se proporcionaron productos para la orden." },
+        {
+          error:
+            "Los productos de la orden ('orderItems') son inválidos o están ausentes.",
+        },
         { status: 400 }
       );
     }
     if (!shippingAddress) {
       return NextResponse.json(
-        { error: "Faltan campos de dirección de envío requeridos." },
+        {
+          error:
+            "La dirección de envío ('shippingAddress') es inválida o está ausente.",
+        },
+        { status: 400 }
+      );
+    }
+    if (!paymentIntentId) {
+      return NextResponse.json(
+        {
+          error:
+            "El ID de pago de Stripe ('paymentIntentId') es inválido o está ausente.",
+        },
         { status: 400 }
       );
     }
@@ -40,8 +61,8 @@ export async function POST(request: Request) {
 
     // ✅ 2. CORRECCIÓN: Convertimos el productId de string a ObjectId para cada item
     const sanitizedOrderItems = items.map((item: any) => {
+      // El frontend envía `productId`, así que lo usamos directamente.
       if (!mongoose.Types.ObjectId.isValid(item.productId)) {
-        // Si el ID no es válido, lanzamos un error para detener el proceso.
         throw new Error(`El ID de producto no es válido: ${item.productId}`);
       }
       return {
@@ -60,7 +81,7 @@ export async function POST(request: Request) {
 
       if (!product) {
         return NextResponse.json(
-          { error: `Producto no encontrado: ${item.productId}` },
+          { error: `Producto no encontrado: ${item.productId.toString()}` },
           { status: 404 }
         );
       }
@@ -76,7 +97,6 @@ export async function POST(request: Request) {
 
       totalPrice += product.price * item.quantity;
 
-      // Preparamos la actualización de stock
       stockUpdatePromises.push(
         Product.updateOne(
           { _id: item.productId },
@@ -98,10 +118,8 @@ export async function POST(request: Request) {
 
     const newOrder = await Order.create(orderDocument);
 
-    // Ejecutamos todas las actualizaciones de stock
     await Promise.all(stockUpdatePromises);
 
-    // Si el usuario está logueado, eliminamos su carrito
     if (userId) {
       await Cart.deleteOne({ userId });
       console.log(
@@ -149,7 +167,7 @@ export async function PUT(request: Request) {
     const updatedOrder = await Order.findByIdAndUpdate(
       orderId,
       { status: newStatus },
-      { new: true } // Devuelve el documento actualizado
+      { new: true }
     );
 
     if (!updatedOrder) {

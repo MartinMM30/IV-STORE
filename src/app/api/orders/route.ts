@@ -4,7 +4,7 @@ import { Product } from "@/models/Product";
 import { Order } from "@/models/Orders";
 import { Cart } from "@/models/Cart";
 import mongoose from "mongoose";
-import { sendEmail } from "@/lib/resend"; // ✅ 1. IMPORTAMOS LA FUNCIÓN PARA ENVIAR CORREOS
+import { sendEmail } from "@/lib/resend";
 
 export const dynamic = "force-dynamic";
 
@@ -87,8 +87,9 @@ export async function POST(request: Request) {
     const savedOrder = await Order.create(orderDocument);
     await Promise.all(stockUpdatePromises);
 
-    // ✅ 2. LÓGICA PARA ENVIAR LA NOTIFICACIÓN AL ADMIN
+    // ✅ LÓGICA DE NOTIFICACIONES POR CORREO
     if (savedOrder) {
+      // --- 1. Notificación para el Administrador ---
       try {
         const adminEmail = process.env.ADMIN_EMAIL;
         if (adminEmail) {
@@ -97,49 +98,23 @@ export async function POST(request: Request) {
             .substring(0, 8)}`;
           const itemsHtml = savedOrder.orderItems
             .map(
-              (item: any) => `
-            <tr>
-              <td style="padding: 8px; border-bottom: 1px solid #333;">${
-                item.name
-              }</td>
-              <td style="padding: 8px; border-bottom: 1px solid #333; text-align: center;">${
-                item.quantity
-              }</td>
-              <td style="padding: 8px; border-bottom: 1px solid #333; text-align: right;">$${item.price.toFixed(
-                2
-              )}</td>
-            </tr>
-          `
+              (item: any) =>
+                `<tr><td style="padding: 8px; border-bottom: 1px solid #333;">${
+                  item.name
+                }</td><td style="padding: 8px; border-bottom: 1px solid #333; text-align: center;">${
+                  item.quantity
+                }</td><td style="padding: 8px; border-bottom: 1px solid #333; text-align: right;">$${item.price.toFixed(
+                  2
+                )}</td></tr>`
             )
             .join("");
-
-          const htmlBody = `
-            <div style="font-family: sans-serif; color: #eee; background-color: #111; padding: 20px; border-radius: 8px;">
-              <h1 style="color: #fff;">Nueva Orden Recibida</h1>
-              <p>Se ha realizado una nueva compra en tu tienda.</p>
-              <h2 style="border-bottom: 1px solid #5c3aff; padding-bottom: 5px; color: #fff;">Detalles de la Orden</h2>
-              <p><strong>ID de Orden:</strong> ${savedOrder._id.toString()}</p>
-              <p><strong>Cliente:</strong> ${
-                savedOrder.shippingAddress.name
-              } (${savedOrder.shippingAddress.email})</p>
-              <p><strong>Total:</strong> $${savedOrder.totalPrice.toFixed(
-                2
-              )}</p>
-              <h3 style="color: #fff;">Productos:</h3>
-              <table style="width: 100%; border-collapse: collapse; color: #ccc;">
-                <thead>
-                  <tr>
-                    <th style="padding: 8px; border-bottom: 2px solid #5c3aff; text-align: left;">Producto</th>
-                    <th style="padding: 8px; border-bottom: 2px solid #5c3aff; text-align: center;">Cantidad</th>
-                    <th style="padding: 8px; border-bottom: 2px solid #5c3aff; text-align: right;">Precio</th>
-                  </tr>
-                </thead>
-                <tbody>${itemsHtml}</tbody>
-              </table>
-              <p style="margin-top: 20px;">Puedes ver los detalles completos en tu panel de administración.</p>
-            </div>
-          `;
-
+          const htmlBody = `<div style="font-family: sans-serif; color: #eee; background-color: #111; padding: 20px; border-radius: 8px;"><h1 style="color: #fff;">Nueva Orden Recibida</h1><p>Se ha realizado una nueva compra en tu tienda.</p><h2 style="border-bottom: 1px solid #5c3aff; padding-bottom: 5px; color: #fff;">Detalles de la Orden</h2><p><strong>ID de Orden:</strong> ${savedOrder._id.toString()}</p><p><strong>Cliente:</strong> ${
+            savedOrder.shippingAddress.name
+          } (${
+            savedOrder.shippingAddress.email
+          })</p><p><strong>Total:</strong> $${savedOrder.totalPrice.toFixed(
+            2
+          )}</p><h3 style="color: #fff;">Productos:</h3><table style="width: 100%; border-collapse: collapse; color: #ccc;"><thead><tr><th style="padding: 8px; border-bottom: 2px solid #5c3aff; text-align: left;">Producto</th><th style="padding: 8px; border-bottom: 2px solid #5c3aff; text-align: center;">Cantidad</th><th style="padding: 8px; border-bottom: 2px solid #5c3aff; text-align: right;">Precio</th></tr></thead><tbody>${itemsHtml}</tbody></table><p style="margin-top: 20px;">Puedes ver los detalles completos en tu panel de administración.</p></div>`;
           await sendEmail({ to: adminEmail, subject, html: htmlBody });
           console.log(`✅ Notificación de nueva orden enviada a ${adminEmail}`);
         } else {
@@ -148,9 +123,45 @@ export async function POST(request: Request) {
           );
         }
       } catch (emailError) {
-        // Es importante que un error al enviar el email no detenga el flujo del cliente.
         console.error(
           "❌ Error al enviar el correo de notificación al admin:",
+          emailError
+        );
+      }
+
+      // --- 2. Confirmación para el Cliente ---
+      try {
+        const customerEmail = savedOrder.shippingAddress.email;
+        const subject = `Confirmación de tu pedido #${savedOrder._id
+          .toString()
+          .substring(0, 8)}`;
+        const itemsHtml = savedOrder.orderItems
+          .map(
+            (item: any) =>
+              `<tr><td style="padding: 10px; text-align: left;">${
+                item.name
+              }</td><td style="padding: 10px; text-align: right;">${
+                item.quantity
+              }</td><td style="padding: 10px; text-align: right;">$${(
+                item.price * item.quantity
+              ).toFixed(2)}</td></tr>`
+          )
+          .join("");
+        const htmlBody = `<div style="font-family: Arial, sans-serif; max-width: 600px; margin: auto; border: 1px solid #ddd; padding: 20px;"><h2 style="text-align: center; color: #333;">Confirmación de Pedido</h2><hr style="border: none; border-top: 1px solid #eee;"><p>¡Gracias por tu compra, ${
+          savedOrder.shippingAddress.name
+        }! Tu pedido ha sido confirmado.</p><p><strong>Número de Pedido:</strong> #${savedOrder._id
+          .toString()
+          .substring(
+            0,
+            8
+          )}</p><table style="width: 100%; border-collapse: collapse; margin-top: 20px;"><thead><tr style="background-color: #f4f4f4;"><th style="padding: 10px; text-align: left;">Producto</th><th style="padding: 10px; text-align: right;">Cantidad</th><th style="padding: 10px; text-align: right;">Subtotal</th></tr></thead><tbody>${itemsHtml}</tbody><tfoot><tr style="border-top: 2px solid #333;"><td colspan="2" style="padding: 10px; text-align: right;"><strong>Total:</strong></td><td style="padding: 10px; text-align: right;"><strong>$${savedOrder.totalPrice.toFixed(
+          2
+        )}</strong></td></tr></tfoot></table><p style="text-align: center; margin-top: 40px; color: #777;">Si tienes alguna pregunta, no dudes en contactarnos.</p></div>`;
+        await sendEmail({ to: customerEmail, subject, html: htmlBody });
+        console.log(`✅ Correo de confirmación enviado a ${customerEmail}`);
+      } catch (emailError) {
+        console.error(
+          "❌ Error al enviar el correo de confirmación al cliente:",
           emailError
         );
       }

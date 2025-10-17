@@ -1,8 +1,11 @@
 import { NextResponse } from "next/server";
 import { connectMongoose } from "@/lib/mongooseClient";
 import { Product } from "@/models/Product";
-import { Order } from "@/models/Orders"; // Asegúrate de que este sea tu modelo correcto
-import { Cart } from "@/models/Cart"; 
+import { Order } from "@/models/Orders"; // Corregido para apuntar a tu modelo de Order
+import { Cart } from "@/models/Cart"; // Añadido para poder limpiar el carrito
+
+// Asegura que la ruta no sea cacheada y se ejecute en el servidor
+export const dynamic = "force-dynamic";
 
 // =================================================================
 // POST: CREAR NUEVA ORDEN
@@ -10,54 +13,54 @@ import { Cart } from "@/models/Cart";
 export async function POST(request: Request) {
   try {
     const body = await request.json();
-    const { userId, items, shippingAddress, guestInfo } = body;
+    const { userId, items, shippingAddress, guestInfo, paymentIntentId } = body; // Añadido paymentIntentId
 
-    // ... (El resto de tu código de validación y conexión a la DB se mantiene igual) ...
-    if (!items || items.length === 0) {
+    // --- Validaciones de Entrada ---
+    if (!items || !Array.isArray(items) || items.length === 0) {
       return NextResponse.json(
         { error: "No se proporcionaron productos para la orden." },
         { status: 400 }
       );
     }
-
-    if (!shippingAddress || !shippingAddress.name || !shippingAddress.email || !shippingAddress.address || !shippingAddress.city || !shippingAddress.country || !shippingAddress.zipCode) {
+    if (!shippingAddress) {
       return NextResponse.json(
         { error: "Faltan campos de dirección de envío requeridos." },
         { status: 400 }
       );
     }
-    
-    if (!userId && (!guestInfo || !guestInfo.name || !guestInfo.email)) {
+    if (!userId && !guestInfo) {
       return NextResponse.json(
-        { error: "Se requiere un usuario logueado o información de invitado (nombre y email)." },
+        { error: "Se requiere un usuario logueado o información de invitado." },
         { status: 400 }
       );
     }
-    
+
     await connectMongoose();
-    
+
     let totalPrice = 0;
     const orderItems: any[] = [];
-    
-    const updatePromises: Promise<any>[] = [];
-    
+    const stockUpdatePromises: Promise<any>[] = [];
+
+    // --- Verificación de Productos y Stock en el Servidor ---
     for (const item of items) {
-      const product = await Product.findById(item.productId, { name: 1, price: 1, stock: 1 });
-      
+      const product = await Product.findById(item.productId);
+
       if (!product) {
         return NextResponse.json(
           { error: `Producto no encontrado: ${item.productId}` },
           { status: 404 }
         );
       }
-      
-      if (typeof product.stock !== "number" || product.stock < item.quantity) {
+
+      if (product.stock < item.quantity) {
         return NextResponse.json(
-          { error: `Stock insuficiente para ${product.name}. Disponible: ${product.stock}` },
+          {
+            error: `Stock insuficiente para ${product.name}. Disponible: ${product.stock}`,
+          },
           { status: 400 }
         );
       }
-      
+
       orderItems.push({
         productId: product._id,
         name: product.name,
@@ -66,35 +69,44 @@ export async function POST(request: Request) {
       });
 
       totalPrice += product.price * item.quantity;
-      
-      updatePromises.push(
-        Product.findByIdAndUpdate(item.productId, { $inc: { stock: -item.quantity } })
+
+      // Preparamos la actualización de stock
+      stockUpdatePromises.push(
+        Product.updateOne(
+          { _id: item.productId },
+          { $inc: { stock: -item.quantity } }
+        )
       );
     }
-    
+
+    // --- Creación del Documento de la Orden ---
     const orderDocument = {
       userId: userId || null,
-      guestInfo: userId ? null : guestInfo,
+      guestInfo: userId ? undefined : guestInfo,
       orderItems,
-      shippingAddress: shippingAddress,
+      shippingAddress,
       totalPrice,
-      status: "pendiente",
-      createdAt: new Date(),
+      paymentIntentId, // Guardamos el ID de pago de Stripe
+      status: "pagado", // El pedido se crea después del pago exitoso
     };
-    
-    const result = await Order.create(orderDocument);
-    await Promise.all(updatePromises);
 
-    // ✅ LÍNEA CLAVE: ELIMINA EL CARRITO DEL USUARIO DESPUÉS DE LA COMPRA
+    const newOrder = await Order.create(orderDocument);
+
+    // Ejecutamos todas las actualizaciones de stock
+    await Promise.all(stockUpdatePromises);
+
+    // Si el usuario está logueado, eliminamos su carrito
     if (userId) {
       await Cart.deleteOne({ userId });
-      console.log(`🛒 Carrito del usuario ${userId} eliminado después de la compra.`);
+      console.log(
+        `🛒 Carrito del usuario ${userId} eliminado después de la compra.`
+      );
     }
 
     return NextResponse.json(
       {
         message: "Orden creada exitosamente",
-        orderId: result._id.toString(),
+        orderId: newOrder._id.toString(),
       },
       { status: 201 }
     );
@@ -108,58 +120,51 @@ export async function POST(request: Request) {
 }
 
 // =================================================================
-// PUT: ACTUALIZAR ESTADO DE ORDEN (Pago Simulado)
+// PUT: ACTUALIZAR ESTADO DE ORDEN
 // =================================================================
 export async function PUT(request: Request) {
-  try {
-    await connectMongoose();
-    const body = await request.json();
-    const { orderId, newStatus } = body;
+  try {
+    await connectMongoose();
+    const body = await request.json();
+    const { orderId, newStatus } = body;
 
-    if (!orderId || !newStatus) {
-      return NextResponse.json(
-        { error: "Se requieren 'orderId' y 'newStatus'." },
-        { status: 400 }
-      );
-    }
+    if (!orderId || !newStatus) {
+      return NextResponse.json(
+        { error: "Se requieren 'orderId' y 'newStatus'." },
+        { status: 400 }
+      );
+    }
 
-    // Validación simple del estado
-    const validStatuses = ["pagado", "enviado", "entregado", "cancelado"];
-    if (!validStatuses.includes(newStatus)) {
-      return NextResponse.json(
-        { error: "Estado inválido." },
-        { status: 400 }
-      );
-    }
+    const validStatuses = ["pagado", "enviado", "entregado", "cancelado"];
+    if (!validStatuses.includes(newStatus)) {
+      return NextResponse.json({ error: "Estado inválido." }, { status: 400 });
+    }
 
-    // 🚨 NOTA: Si orderId no es un ObjectId válido, Mongoose lo intentará convertir y fallará silenciosamente o tirará error.
-    // Usamos Order.findByIdAndUpdate para actualizar el estado.
-    const updatedOrder = await Order.findByIdAndUpdate(
-      orderId,
-      { status: newStatus },
-      { new: true } // Devuelve el documento actualizado
-    );
+    const updatedOrder = await Order.findByIdAndUpdate(
+      orderId,
+      { status: newStatus },
+      { new: true } // Devuelve el documento actualizado
+    );
 
-    if (!updatedOrder) {
-      return NextResponse.json(
-        { error: `Orden con ID ${orderId} no encontrada.` },
-        { status: 404 }
-      );
-    }
+    if (!updatedOrder) {
+      return NextResponse.json(
+        { error: `Orden con ID ${orderId} no encontrada.` },
+        { status: 404 }
+      );
+    }
 
-    return NextResponse.json(
-      {
-        message: `Estado de la orden ${orderId} actualizado a ${newStatus}.`,
-        order: updatedOrder,
-      },
-      { status: 200 }
-    );
-  } catch (error) {
-    console.error("❌ Error en la API de Órdenes (PUT):", error);
-    // Nota: El error de Cast to ObjectId volverá a aparecer aquí si el ID no es ObjectId
-    return NextResponse.json(
-      { error: "Error interno al actualizar la orden." },
-      { status: 500 }
-    );
-  }
+    return NextResponse.json(
+      {
+        message: `Estado de la orden ${orderId} actualizado a ${newStatus}.`,
+        order: updatedOrder,
+      },
+      { status: 200 }
+    );
+  } catch (error) {
+    console.error("❌ Error en la API de Órdenes (PUT):", error);
+    return NextResponse.json(
+      { error: "Error interno al actualizar la orden." },
+      { status: 500 }
+    );
+  }
 }

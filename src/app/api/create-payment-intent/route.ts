@@ -29,9 +29,8 @@ const calculateOrderAmount = async (
     }
   }
 
-  // ✅ CORRECCIÓN: Para monedas de cero decimales como CRC, no se multiplica por 100.
-  // Stripe espera el monto en la unidad principal (colones).
-  return Math.round(total);
+  // ✅ CAMBIO: Para USD, Stripe requiere el monto en centavos, así que volvemos a multiplicar por 100.
+  return Math.round(total * 100);
 };
 
 export async function POST(request: Request) {
@@ -40,17 +39,18 @@ export async function POST(request: Request) {
 
     const amount = await calculateOrderAmount(items);
 
-    if (amount === 0) {
+    if (amount < 50) {
+      // Stripe tiene un monto mínimo (50 centavos)
       return NextResponse.json(
-        { error: "El carrito está vacío o los productos no son válidos" },
+        { error: "El monto total debe ser de al menos $0.50" },
         { status: 400 }
       );
     }
 
-    // Crea un PaymentIntent con el monto del pedido y la moneda.
     const paymentIntent = await stripe.paymentIntents.create({
       amount: amount,
-      currency: "crc",
+      // ✅ CAMBIO: La moneda ahora es 'usd'.
+      currency: "usd",
       automatic_payment_methods: {
         enabled: true,
       },

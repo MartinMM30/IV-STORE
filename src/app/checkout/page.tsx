@@ -217,10 +217,13 @@ const CheckoutForm = ({
             : "bg-accent text-white hover:opacity-80"
         }`}
       >
-        {/* ✅ CORRECCIÓN: Quitamos la multiplicación por 100 */}
+        {/* ✅ CAMBIO: Mostramos el precio en USD */}
         {isLoading
           ? "Procesando..."
-          : `Pagar ₡${total.toLocaleString("es-CR")}`}
+          : `Pagar ${total.toLocaleString("en-US", {
+              style: "currency",
+              currency: "USD",
+            })}`}
       </button>
     </form>
   );
@@ -334,16 +337,24 @@ export default function CheckoutPage() {
                       </p>
                     </div>
                   </div>
-                  {/* ✅ CORRECCIÓN: Quitamos la multiplicación por 100 */}
+                  {/* ✅ CAMBIO: Mostramos el precio en USD */}
                   <p className="text-neutral-300">
-                    ₡{(item.price * item.quantity).toLocaleString("es-CR")}
+                    {(item.price * item.quantity).toLocaleString("en-US", {
+                      style: "currency",
+                      currency: "USD",
+                    })}
                   </p>
                 </div>
               ))}
               <div className="border-t border-neutral-800 pt-4 mt-4 flex justify-between font-semibold">
                 <p className="uppercase">Total</p>
-                {/* ✅ CORRECCIÓN: Quitamos la multiplicación por 100 */}
-                <p className="text-accent">₡{total.toLocaleString("es-CR")}</p>
+                {/* ✅ CAMBIO: Mostramos el precio en USD */}
+                <p className="text-accent">
+                  {total.toLocaleString("en-US", {
+                    style: "currency",
+                    currency: "USD",
+                  })}
+                </p>
               </div>
             </div>
           ) : (

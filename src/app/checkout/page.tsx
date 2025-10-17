@@ -4,294 +4,223 @@ import { useState, useEffect } from "react";
 import { useCart } from "@/context/CartContext";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/context/AuthContext";
+import { loadStripe } from '@stripe/stripe-js';
+import { Elements, PaymentElement, useStripe, useElements } from '@stripe/react-stripe-js';
 
-// Interfaz para items del carrito
-interface CartItem {
-  _id: { toString: () => string };
-  name: string;
-  price: number;
-  quantity: number;
-}
+// Carga la instancia de Stripe fuera del componente.
+// ¡Asegúrate de que tu variable de entorno esté configurada en .env.local y Vercel!
+const stripePromise = loadStripe(process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY!);
 
-// -------------------------------------------------------------
-// Función de Pago Simulado
-// -------------------------------------------------------------
-async function simulatePaymentAndFinalize(orderId: string): Promise<boolean> {
-  try {
-    // Llama a la nueva ruta PUT para cambiar el estado a 'pagado'
-    const response = await fetch("/api/orders", {
-      method: "PUT",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        orderId: orderId,
-        newStatus: "pagado",
-      }),
-    });
+// --- Componente del Formulario de Checkout ---
+const CheckoutForm = ({ clientSecret, onPaymentSuccess }: { clientSecret: string, onPaymentSuccess: (orderId: string) => void }) => {
+  const stripe = useStripe();
+  const elements = useElements();
+  const { cart: items, total, clearCart, refetchProducts } = useCart();
+  const { isAuthenticated, user, userProfile } = useAuth();
 
-    return response.ok;
-  } catch (error) {
-    console.error("Error al simular pago:", error);
-    return false;
-  }
-}
+  const [form, setForm] = useState({ name: "", email: "", address: "", city: "", country: "Costa Rica", zipCode: "" });
+  const [isLoading, setIsLoading] = useState(false);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
-// -------------------------------------------------------------
-// Enviar email de confirmación
-// -------------------------------------------------------------
-async function sendConfirmationEmail(
-  orderId: string,
-  email: string,
-  orderItems: any[],
-  totalAmount: number
-): Promise<boolean> {
-  try {
-    const response = await fetch("/api/email", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        orderId,
-        recipientEmail: email,
-        items: orderItems,
-        totalAmount,
-      }),
-    });
+  useEffect(() => {
+    if (isAuthenticated && userProfile) {
+      setForm((prev) => ({ ...prev, name: userProfile.nombre || "", email: userProfile.email || "" }));
+    }
+  }, [isAuthenticated, userProfile]);
 
-    return response.ok;
-  } catch (error) {
-    console.error("Error de red al enviar email:", error);
-    return false;
-  }
-}
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setForm({ ...form, [e.target.name]: e.target.value });
+  };
 
-export default function CheckoutPage() {
-  const { cart: items, total, clearCart, refetchProducts } = useCart();
-  const { isAuthenticated, user, userProfile } = useAuth();
-  const router = useRouter();
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
 
-  const [form, setForm] = useState({
-    name: "",
-    email: "",
-    address: "",
-    city: "",
-    country: "",
-    zipCode: "",
-  });
-  const [loading, setLoading] = useState(false);
-  const [statusMessage, setStatusMessage] = useState("");
+    if (!stripe || !elements) return;
+    
+    setIsLoading(true);
+    setErrorMessage(null);
 
-  // Si está logueado → llenar automáticamente
-  useEffect(() => {
-    if (isAuthenticated && userProfile) {
-      setForm((prevForm) => ({
-        ...prevForm,
-        name: userProfile.nombre,
-        email: userProfile.email,
-      }));
-    }
-  }, [isAuthenticated, userProfile]);
+    // 1. Valida los datos del formulario de Stripe
+    const { error: submitError } = await elements.submit();
+    if (submitError) {
+      setErrorMessage(submitError.message || "Ocurrió un error con los datos de pago.");
+      setIsLoading(false);
+      return;
+    }
+    
+    // 2. Confirma el pago con Stripe
+    const result = await stripe.confirmPayment({
+      elements,
+      clientSecret,
+      confirmParams: {
+        receipt_email: form.email,
+        shipping: {
+          name: form.name,
+          address: { line1: form.address, city: form.city, country: form.country, postal_code: form.zipCode }
+        }
+      },
+      redirect: 'if_required' // No redirige, manejamos el resultado aquí
+    });
 
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    setForm({ ...form, [e.target.name]: e.target.value });
-  };
+    if (result.error) {
+      setErrorMessage(result.error.message || "Ocurrió un error al procesar el pago.");
+      setIsLoading(false);
+    } else if (result.paymentIntent && result.paymentIntent.status === 'succeeded') {
+      // 3. PAGO EXITOSO -> Creamos la orden en nuestra base de datos
+      try {
+        const orderResponse = await fetch('/api/orders', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            userId: isAuthenticated && user ? user.uid : null,
+            guestInfo: !isAuthenticated ? { name: form.name, email: form.email } : undefined,
+            orderItems: items.map(item => ({ productId: item._id, name: item.name, quantity: item.quantity, price: item.price })),
+            shippingAddress: form,
+            totalPrice: total,
+            paymentIntentId: result.paymentIntent.id
+          })
+        });
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
+        if (!orderResponse.ok) {
+           throw new Error('El pago fue exitoso, pero falló al guardar la orden.');
+        }
 
-    // Front-end validation
-    if (!form.name || !form.email || !form.address || !form.city || !form.country || !form.zipCode) {
-      setStatusMessage("Por favor, complete todos los campos de dirección de envío.");
-      return;
-    }
+        const orderData = await orderResponse.json();
+        onPaymentSuccess(orderData.orderId);
+        clearCart();
+        refetchProducts();
 
-    if (items.length === 0) {
-      setStatusMessage("Tu carrito está vacío.");
-      return;
-    }
+      } catch (orderError: any) {
+        setErrorMessage(orderError.message);
+        setIsLoading(false);
+      }
+    }
+  };
 
-    setLoading(true);
-    setStatusMessage("1/3: Creando pedido...");
-
-    const orderItems = items.map((item) => ({
-      productId: item._id.toString(),
-      quantity: item.quantity,
-      name: item.name,
-      price: item.price,
-    }));
-    
-    const shippingAddress = {
-      name: form.name,
-      email: form.email,
-      address: form.address,
-      city: form.city,
-      country: form.country,
-      zipCode: form.zipCode,
-    };
-
-    const orderData = {
-      userId: isAuthenticated && user ? user.uid : null,
-      items: orderItems,
-      shippingAddress: shippingAddress,
-      guestInfo: !isAuthenticated
-        ? { name: form.name, email: form.email }
-        : undefined,
-    };
-
-    try {
-      // 1. CREAR ORDEN (Estado: 'pendiente')
-      const createResponse = await fetch("/api/orders", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(orderData),
-      });
-
-      const createData = await createResponse.json();
-
-      if (!createResponse.ok) {
-        setStatusMessage(`❌ Error (1/3) al crear orden: ${createData.error || "desconocido"}`);
-        return;
-      }
-
-      const orderId = createData.orderId;
-      setStatusMessage("2/3: Simulación de pago...");
-
-
-      // 2. SIMULAR PAGO (Actualizar estado a 'pagado')
-      const paymentSuccess = await simulatePaymentAndFinalize(orderId);
-
-      if (!paymentSuccess) {
-        // El pedido se creó como 'pendiente', pero el pago simulado falló.
-        setStatusMessage(`⚠️ Advertencia: Orden #${orderId.substring(0, 8)} creada, pero el pago falló. Contacte a soporte.`);
-        return;
-      }
+  return (
+    <form onSubmit={handleSubmit} className="space-y-6">
+      <div>
+        <h2 className="text-lg font-light uppercase tracking-widest text-neutral-300">Información de Envío</h2>
+        <div className="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-2">
+          <input type="text" name="name" placeholder="Nombre completo" value={form.name} onChange={handleChange} className="w-full bg-transparent border border-neutral-700 text-sm px-4 py-3 rounded-md focus:border-accent" required disabled={isLoading} />
+          <input type="email" name="email" placeholder="Correo electrónico" value={form.email} onChange={handleChange} className="w-full bg-transparent border border-neutral-700 text-sm px-4 py-3 rounded-md focus:border-accent" required disabled={isLoading} />
+          <input type="text" name="address" placeholder="Dirección" value={form.address} onChange={handleChange} className="w-full bg-transparent border border-neutral-700 text-sm px-4 py-3 rounded-md focus:border-accent sm:col-span-2" required disabled={isLoading} />
+          <input type="text" name="city" placeholder="Ciudad" value={form.city} onChange={handleChange} className="w-full bg-transparent border border-neutral-700 text-sm px-4 py-3 rounded-md focus:border-accent" required disabled={isLoading} />
+          <input type="text" name="zipCode" placeholder="Código Postal" value={form.zipCode} onChange={handleChange} className="w-full bg-transparent border border-neutral-700 text-sm px-4 py-3 rounded-md focus:border-accent" required disabled={isLoading} />
+        </div>
+      </div>
       
-      setStatusMessage("3/3: Enviando confirmación por correo...");
+      <div className="border-t border-neutral-800 pt-6">
+        <h2 className="text-lg font-light uppercase tracking-widest text-neutral-300">Método de Pago</h2>
+        <div className="mt-4 p-4 bg-neutral-900/50 rounded-xl border border-neutral-800">
+           <PaymentElement />
+        </div>
+      </div>
+      
+      {errorMessage && <p className="text-center text-sm text-red-400 py-2">{errorMessage}</p>}
 
+      <button
+        type="submit"
+        disabled={isLoading || !stripe || !elements}
+        className={`w-full mt-8 py-3 uppercase tracking-widest text-sm rounded-md transition ${
+          isLoading || !stripe
+            ? "bg-neutral-700 cursor-not-allowed text-neutral-400"
+            : "bg-accent text-white hover:opacity-80"
+        }`}
+      >
+        {isLoading ? "Procesando..." : Pagar ₡${(total * 100).toLocaleString('es-CR')}}
+      </button>
+    </form>
+  );
+};
 
-      // 3. ENVIAR CORREO
-      const emailSent = await sendConfirmationEmail(
-        orderId,
-        form.email,
-        orderItems,
-        total
-      );
+// --- Componente Principal de la Página de Checkout ---
+export default function CheckoutPage() {
+  const { cart: items, total } = useCart();
+  const router = useRouter();
+  const [clientSecret, setClientSecret] = useState<string | null>(null);
+  const [status, setStatus] = useState<'form' | 'success'>('form');
+  const [orderId, setOrderId] = useState<string | null>(null);
 
-      let successMessage = `✅ Pedido #${orderId.substring(
-        0,
-        8
-      )} confirmado y pagado. ¡Gracias por tu compra!`;
-      
-      if (!emailSent) {
-        successMessage +=
-          " (Advertencia: No se pudo enviar el email de confirmación)";
-      }
-      
-      setStatusMessage(successMessage);
-      refetchProducts();
-      clearCart();
-      setTimeout(() => router.push("/"), 3000);
-    } catch (error) {
-      console.error("Error en checkout:", error);
-      setStatusMessage("❌ Error de conexión con el servidor.");
-    } finally {
-      setLoading(false);
-    }
-  };
+  // Crear el Payment Intent al cargar la página si hay items en el carrito.
+  useEffect(() => {
+    if (items.length > 0) {
+      fetch('/api/create-payment-intent', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ items: items.map(i => ({ _id: i._id, quantity: i.quantity })) }),
+      })
+      .then((res) => res.json())
+      .then((data) => {
+        if (data.clientSecret) {
+          setClientSecret(data.clientSecret)
+        } else {
+          console.error("No se pudo obtener el clientSecret de la API");
+        }
+      });
+    }
+  }, [items]);
 
-  return (
-    <div className="max-w-3xl mx-auto px-6 py-20 text-foreground">
-      {/* Título */}
+  const handlePaymentSuccess = (newOrderId: string) => {
+    setStatus('success');
+    setOrderId(newOrderId);
+    setTimeout(() => router.push("/"), 5000); // Redirige a la home después de 5 segundos
+  };
+
+  const appearance = { theme: 'night', labels: 'floating', variables: { colorPrimary: '#5c3aff' } };
+  const options = clientSecret ? { clientSecret, appearance } : undefined;
+
+  return (
+    <div className="max-w-4xl mx-auto px-6 py-20 text-foreground">
       <h1 className="text-4xl font-light uppercase tracking-[0.25em] text-center mb-16">
         Finalizar Compra
       </h1>
 
-      {/* Mensajes de estado */}
-      {statusMessage && (
-        <div
-          className={`p-4 mb-8 rounded-xl border text-sm font-medium tracking-wider ${
-            statusMessage.startsWith("✅")
-              ? "bg-green-950/40 text-green-300 border-green-700"
-              : statusMessage.startsWith("⚠️")
-              ? "bg-yellow-900/40 text-yellow-200 border-yellow-700"
-              : "bg-red-950/40 text-red-300 border-red-700"
-          }`}
-        >
-          {statusMessage}
-        </div>
-      )}
-
-      {/* Formulario */}
-      <form
-        onSubmit={handleSubmit}
-        className="bg-background/60 border border-neutral-800 rounded-2xl shadow-lg px-8 py-10 space-y-6"
-      >
-        <h2 className="text-lg font-light uppercase tracking-widest mb-4 text-neutral-300">
-          Información de Envío
-        </h2>
-
-        {/* Campos */}
-        {["name", "email", "address", "city", "country", "zipCode"].map((field) => (
-          <input
-            key={field}
-            type={field === "email" ? "email" : "text"}
-            name={field}
-            placeholder={
-              field === "name"
-                ? "Nombre completo"
-                : field === "address"
-                ? "Dirección de envío"
-                : field === "zipCode"
-                ? "Código postal"
-                : field.charAt(0).toUpperCase() + field.slice(1)
-            }
-            value={(form as any)[field]}
-            onChange={handleChange}
-            className="w-full bg-transparent border border-neutral-700 text-sm text-foreground px-4 py-3 rounded-md focus:border-accent focus:outline-none transition"
-            disabled={loading || (isAuthenticated && (field === "name" || field === "email"))}
-            required
-          />
-        ))}
-
-        {/* Resumen del pedido */}
-        <div className="mt-10 border-t border-neutral-800 pt-8">
-          <h2 className="text-lg font-light uppercase tracking-widest mb-6 text-neutral-300">
-            Resumen del Pedido
-          </h2>
-          {items.length === 0 ? (
-            <p className="text-neutral-500 text-sm italic">Tu carrito está vacío.</p>
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-12 items-start">
+        <div className="bg-background/60 border border-neutral-800 rounded-2xl shadow-lg px-8 py-10">
+          {status === 'success' ? (
+            <div className="text-center">
+              <h2 className="text-2xl text-green-400 font-light tracking-wider">¡Pago Exitoso!</h2>
+              <p className="mt-4 text-neutral-400">Gracias por tu compra. Tu orden #{orderId?.substring(0, 8)} se está procesando.</p>
+              <p className="mt-6 text-xs text-neutral-600">Serás redirigido a la página principal en 5 segundos.</p>
+            </div>
+          ) : items.length === 0 ? (
+            <div className="text-center"><p className="text-neutral-400">Tu carrito está vacío.</p></div>
+          ) : clientSecret && options ? (
+            <Elements options={options} stripe={stripePromise}>
+              <CheckoutForm clientSecret={clientSecret} onPaymentSuccess={handlePaymentSuccess} />
+            </Elements>
           ) : (
-            <ul className="space-y-3 bg-neutral-900/50 p-4 rounded-xl border border-neutral-800">
-              {items.map((item) => (
-                <li
-                  key={item._id.toString()}
-                  className="flex justify-between text-sm text-neutral-300"
-                >
-                  <span>
-                    {item.name} <span className="text-neutral-500">x {item.quantity}</span>
-                  </span>
-                  <span>${(item.price * item.quantity).toFixed(2)}</span>
-                </li>
-              ))}
-              <li className="flex justify-between text-base font-medium border-t border-neutral-800 pt-3 mt-3">
-                <span>Total</span>
-                <span className="text-accent font-semibold">${total.toFixed(2)}</span>
-              </li>
-            </ul>
+            <p className="text-center text-neutral-400">Cargando pasarela de pago...</p>
           )}
         </div>
 
-        {/* Botón */}
-        <button
-          type="submit"
-          className={`w-full mt-8 py-3 uppercase tracking-[0.2em] text-sm font-medium rounded-md transition ${
-            loading || items.length === 0
-              ? "bg-neutral-700 cursor-not-allowed text-neutral-400"
-              : "bg-accent text-white hover:opacity-80"
-          }`}
-          disabled={loading || items.length === 0}
-        >
-          {loading ? "Procesando..." : "Confirmar y Pagar"}
-        </button>
-      </form>
+        <div className="sticky top-24">
+          <h2 className="text-lg font-light uppercase tracking-widest text-neutral-300 mb-6">Resumen del Pedido</h2>
+          {items.length > 0 ? (
+            <div className="space-y-4">
+              {items.map((item) => (
+                <div key={item._id} className="flex justify-between items-center text-sm">
+                  <div className="flex items-center gap-4">
+                    <img src={item.images?.[0] || '/placeholder-image.jpg'} alt={item.name} className="w-16 h-16 object-cover rounded-md"/>
+                    <div>
+                      <p className="text-neutral-200">{item.name}</p>
+                      <p className="text-neutral-500 text-xs">Cantidad: {item.quantity}</p>
+                    </div>
+                  </div>
+                  <p className="text-neutral-300">₡{(item.price * item.quantity * 100).toLocaleString('es-CR')}</p>
+                </div>
+              ))}
+              <div className="border-t border-neutral-800 pt-4 mt-4 flex justify-between font-semibold">
+                <p className="uppercase">Total</p>
+                <p className="text-accent">₡{(total * 100).toLocaleString('es-CR')}</p>
+              </div>
+            </div>
+          ) : (
+             <p className="text-neutral-500 text-sm italic">Tu carrito está vacío.</p>
+          )}
+        </div>
+      </div>
     </div>
-  );
+  );
 }

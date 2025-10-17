@@ -4,7 +4,6 @@ import { useState, useEffect } from "react";
 import { useCart } from "@/context/CartContext";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/context/AuthContext";
-// ✅ CORRECCIÓN: Eliminamos la importación de 'StripeAppearance'
 import { loadStripe } from "@stripe/stripe-js";
 import {
   Elements,
@@ -13,8 +12,6 @@ import {
   useElements,
 } from "@stripe/react-stripe-js";
 
-// Carga la instancia de Stripe fuera del componente.
-// ¡Asegúrate de que tu variable de entorno esté configurada en .env.local y Vercel!
 const stripePromise = loadStripe(
   process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY!
 );
@@ -59,13 +56,11 @@ const CheckoutForm = ({
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-
     if (!stripe || !elements) return;
 
     setIsLoading(true);
     setErrorMessage(null);
 
-    // 1. Valida los datos del formulario de Stripe
     const { error: submitError } = await elements.submit();
     if (submitError) {
       setErrorMessage(
@@ -75,7 +70,6 @@ const CheckoutForm = ({
       return;
     }
 
-    // 2. Confirma el pago con Stripe
     const result = await stripe.confirmPayment({
       elements,
       clientSecret,
@@ -91,7 +85,7 @@ const CheckoutForm = ({
           },
         },
       },
-      redirect: "if_required", // No redirige, manejamos el resultado aquí
+      redirect: "if_required",
     });
 
     if (result.error) {
@@ -103,7 +97,6 @@ const CheckoutForm = ({
       result.paymentIntent &&
       result.paymentIntent.status === "succeeded"
     ) {
-      // 3. PAGO EXITOSO -> Creamos la orden en nuestra base de datos
       try {
         const orderResponse = await fetch("/api/orders", {
           method: "POST",
@@ -224,9 +217,10 @@ const CheckoutForm = ({
             : "bg-accent text-white hover:opacity-80"
         }`}
       >
+        {/* ✅ CORRECCIÓN: Quitamos la multiplicación por 100 */}
         {isLoading
           ? "Procesando..."
-          : `Pagar ₡${(total * 100).toLocaleString("es-CR")}`}
+          : `Pagar ₡${total.toLocaleString("es-CR")}`}
       </button>
     </form>
   );
@@ -240,7 +234,6 @@ export default function CheckoutPage() {
   const [status, setStatus] = useState<"form" | "success">("form");
   const [orderId, setOrderId] = useState<string | null>(null);
 
-  // Crear el Payment Intent al cargar la página si hay items en el carrito.
   useEffect(() => {
     if (items.length > 0) {
       fetch("/api/create-payment-intent", {
@@ -255,7 +248,10 @@ export default function CheckoutPage() {
           if (data.clientSecret) {
             setClientSecret(data.clientSecret);
           } else {
-            console.error("No se pudo obtener el clientSecret de la API");
+            console.error(
+              "No se pudo obtener el clientSecret de la API:",
+              data.error
+            );
           }
         });
     }
@@ -267,8 +263,6 @@ export default function CheckoutPage() {
     setTimeout(() => router.push("/"), 5000);
   };
 
-  // ✅ CORRECCIÓN: Usamos 'as const' para que TypeScript infiera el tipo exacto,
-  // en lugar de un 'string' genérico. Esto soluciona el error.
   const appearance = {
     theme: "night",
     labels: "floating",
@@ -340,17 +334,16 @@ export default function CheckoutPage() {
                       </p>
                     </div>
                   </div>
+                  {/* ✅ CORRECCIÓN: Quitamos la multiplicación por 100 */}
                   <p className="text-neutral-300">
-                    ₡
-                    {(item.price * item.quantity * 100).toLocaleString("es-CR")}
+                    ₡{(item.price * item.quantity).toLocaleString("es-CR")}
                   </p>
                 </div>
               ))}
               <div className="border-t border-neutral-800 pt-4 mt-4 flex justify-between font-semibold">
                 <p className="uppercase">Total</p>
-                <p className="text-accent">
-                  ₡{(total * 100).toLocaleString("es-CR")}
-                </p>
+                {/* ✅ CORRECCIÓN: Quitamos la multiplicación por 100 */}
+                <p className="text-accent">₡{total.toLocaleString("es-CR")}</p>
               </div>
             </div>
           ) : (

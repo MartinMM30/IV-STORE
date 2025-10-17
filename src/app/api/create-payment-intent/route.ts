@@ -8,6 +8,7 @@ const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
   typescript: true,
 });
 
+// Esta función calcula el total del pedido de forma segura en el servidor.
 const calculateOrderAmount = async (
   items: { _id: string; quantity: number }[]
 ): Promise<number> => {
@@ -28,7 +29,9 @@ const calculateOrderAmount = async (
     }
   }
 
-  return Math.round(total * 100);
+  // ✅ CORRECCIÓN: Para monedas de cero decimales como CRC, no se multiplica por 100.
+  // Stripe espera el monto en la unidad principal (colones).
+  return Math.round(total);
 };
 
 export async function POST(request: Request) {
@@ -44,6 +47,7 @@ export async function POST(request: Request) {
       );
     }
 
+    // Crea un PaymentIntent con el monto del pedido y la moneda.
     const paymentIntent = await stripe.paymentIntents.create({
       amount: amount,
       currency: "crc",
@@ -55,7 +59,6 @@ export async function POST(request: Request) {
     return NextResponse.json({ clientSecret: paymentIntent.client_secret });
   } catch (error: any) {
     console.error("Error al crear el Payment Intent:", error);
-    // ✅ CORRECCIÓN: El mensaje de error ahora es una cadena de texto válida (template literal)
     return NextResponse.json(
       { error: `Error interno del servidor: ${error.message}` },
       { status: 500 }
